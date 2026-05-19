@@ -7,8 +7,7 @@ services:
       - "4533:4533"
     restart: unless-stopped
     environment:
-      # Optional: put your config options customization here. Examples:
-      # ND_LOGLEVEL: debug
+      ND_LOGLEVEL: debug
     volumes:
       - "/Volume1/homes/carthy_k/navidrome/data:/data"
       - "/Volume1/homes/carthy_k/songs:/music:ro"
