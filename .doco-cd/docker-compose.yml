@@ -1,1 +1,46 @@
-test
+services:
+  app:
+    container_name: doco-cd
+    # copied from - https://github.com/kimdre/doco-cd/blob/main/docker-compose.yml and modified if needed
+    # You can also pin to a specific tag (version)
+    # Available tags can be found here: https://github.com/kimdre/doco-cd/pkgs/container/doco-cd
+    image: ghcr.io/kimdre/doco-cd:v0.88.0
+    restart: unless-stopped
+    ports:
+      - "80:80" # Webhook endpoint
+      - "9120:9120" # Prometheus metrics
+    # For all available environment variables and explanations, see https://doco.cd/latest/App-Settings/
+    environment:
+      TZ: Europe/Berlin
+      # see : https://doco.cd/latest/Advanced/Encryption/
+      SOPS_AGE_KEY_FILE: /run/secrets/sops_age_key 
+      # GIT_ACCESS_TOKEN: xxx
+      # WEBHOOK_SECRET: xxx  # Uncomment this line and the webhook port above and set a secure secret if you want to use webhooks.
+      # <<: *poll-config  # Uncomment this line to use the poll configuration from above (the `x-poll-config` section).
+      # Docker compose reads this directly from the local .env file
+      # preview the configuration to ensure the variable is being read correctly by running `docker compose config`
+      GIT_ACCESS_TOKEN : ${GIT_ACCESS_TOKEN}
+      POLL_CONFIG: |   
+        - url: https://github.com/karthikeyan-karuppiah/home-lab.git
+          reference: main 
+          interval: 1800 
+          target: ${DOCO_CD_TARGET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # The data volume (left side) can also be replaced with a bind mount to a local directory, for example:
+      # - ./data:/data
+      - data:/data
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: [ "CMD", "/doco-cd", "healthcheck" ]
+      start_period: 15s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    secrets:
+      sops_age_key:
+        file: /volume1/.config/age/keys.txt
+
+volumes:
+  data:

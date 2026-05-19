@@ -1,3 +1,4 @@
 **/.decrypted~*
-sops_age_key.txt
+keys.txt
 key_*
+.env
