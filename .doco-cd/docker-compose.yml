@@ -24,7 +24,10 @@ services:
         - url: https://github.com/karthikeyan-karuppiah/home-lab.git
           reference: main 
           interval: 1800 
-          target: ${DOCO_CD_TARGET}
+          # leaving empty will look for .doco-cd.yaml in the root of the repository
+          # if you set target : "staging" it looks for .doco-cd.staging.yaml instead
+          # if you set target : "production" it looks for .doco-cd.production.yaml instead
+          target: ""
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # The data volume (left side) can also be replaced with a bind mount to a local directory, for example:
@@ -39,8 +42,10 @@ services:
       timeout: 5s
       retries: 3
     secrets:
-      sops_age_key:
-        file: /volume1/.config/age/keys.txt
+      - sops_age_key 
+secrets:
+  sops_age_key:
+    file: /volume1/.config/age/keys.txt
 
 volumes:
   data:

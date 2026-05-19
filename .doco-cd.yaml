@@ -1,0 +1,12 @@
+working_dir: tnas
+auto_discovery:
+  enabled: true
+  depth: 3
+# Build configurations to bypass cache and pull fresh base images
+build:
+  no_cache: true
+  pull: true
+
+# Optional: Configuration for tearing down resources
+destroy:
+  prune_images: true # Remove all unused images not just dangling ones
