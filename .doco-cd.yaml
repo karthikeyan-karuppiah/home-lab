@@ -1,4 +1,4 @@
-working_dir: tnas
+working_dir: apps
 auto_discovery:
   enabled: true
   depth: 3
