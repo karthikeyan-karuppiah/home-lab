@@ -1,1 +1,14 @@
-test
+services:
+  navidrome:
+    # copied from https://www.navidrome.org/docs/installation/docker/
+    image: deluan/navidrome:v0.61.2
+    user: 1000:1000 # should be owner of volumes
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+    environment:
+      # Optional: put your config options customization here. Examples:
+      # ND_LOGLEVEL: debug
+    volumes:
+      - "/Volume1/homes/carthy_k/navidrome/data:/data"
+      - "/Volume1/homes/carthy_k/songs:/music:ro"
