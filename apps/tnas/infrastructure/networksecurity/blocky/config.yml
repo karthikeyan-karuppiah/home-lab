@@ -12,7 +12,7 @@ blocking:
     default:
       - ads
 
-# Shift caching all the way to the left (root level)
+# Ensure 'caching:' is typed against the far left edge of the page
 caching:
   minTime: 5m
   maxTime: 30m
