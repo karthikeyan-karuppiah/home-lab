@@ -1,7 +1,7 @@
 working_dir: apps
 auto_discovery:
   enabled: true
-  depth: 3
+  depth: 4
 # Build configurations to bypass cache and pull fresh base images
 build:
   no_cache: true

@@ -1,0 +1,20 @@
+upstreams:
+  groups:
+    default:
+      - https://quad9.net
+      - https://cloudflare-dns.com
+
+blocking:
+  denylists:
+    ads:
+      - https://githubusercontent.com
+  clientGroupsBlock:
+    default:
+      - ads
+  caching:
+    minTime: 5m
+    maxTime: 30m
+
+ports:
+  dns: 53
+  http: 4000

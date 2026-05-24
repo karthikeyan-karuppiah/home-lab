@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  blocky:
+    image: spx01/blocky:0.30.0
+    container_name: blocky
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "4000:4000"
+    volumes:
+      - ./config.yml:/app/config.yml
+    environment:
+      - TZ=Europe/Stockholm  # Swap with your actual local Timezone
+    labels:
+      # These labels tell Doco-CD how to monitor your container for registry updates
+      - "cd.doco.image.update=true"
+      - "cd.doco.image.policy=latest"
