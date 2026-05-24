@@ -11,9 +11,11 @@ blocking:
   clientGroupsBlock:
     default:
       - ads
-  caching:
-    minTime: 5m
-    maxTime: 30m
+
+# Shift caching all the way to the left (root level)
+caching:
+  minTime: 5m
+  maxTime: 30m
 
 ports:
   dns: 53
