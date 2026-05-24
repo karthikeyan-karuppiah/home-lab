@@ -3,7 +3,8 @@ version: "3.8"
 services:
   blocky:
     # Explicitly append the 'v' prefix required by spx01/blocky
-    image: spx01/blocky:v0.30.0
+    # Change the registry path from spx01/blocky to ghcr.io/0xerr0r/blocky
+    image: ghcr.io/0xerr0r/blocky:v0.30.0
     container_name: blocky
     restart: unless-stopped
     ports:
@@ -13,8 +14,9 @@ services:
     volumes:
       - ./config.yml:/app/config.yml
     environment:
-      - TZ=Europe/Stockholm
+      - TZ=Europe/Stockholm  # Adjust to your timezone if necessary
     labels:
       - "cd.doco.image.update=true"
       # Enforce a semantic version template regex that handles the 'v' prefix if Doco-CD allows it
-      - "cd.doco.image.policy=v0.30.0" 
+      # This matches the 'v' prefixed versioning used by the developers
+      - "cd.doco.image.policy=v0.30.0"
