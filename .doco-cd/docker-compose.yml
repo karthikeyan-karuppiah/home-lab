@@ -19,7 +19,7 @@ services:
       # Docker compose reads this directly from the local .env file
       # preview the configuration to ensure the variable is being read correctly by running `docker compose config`
       GIT_ACCESS_TOKEN: ${GIT_ACCESS_TOKEN}
-      POLL_CONFIG: |  
+      POLL_CONFIG: |
         - url: https://github.com/karthikeyan-karuppiah/home-lab.git
           reference: main
           interval: 1800
