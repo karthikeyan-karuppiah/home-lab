@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  renovate:
+    image: renovate/renovate:39
+    container_name: renovate-bot
+    restart: unless-stopped
+    environment:
+      # Identify the target platform
+      - RENOVATE_PLATFORM=github
+      #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
+      # Tell Renovate to read the token from the decrypted file path
+      - RENOVATE_TOKEN_FILE=./renovate-secret.enc.txt
+      # List your target repositories (comma-separated for multiple)
+      - RENOVATE_REPOSITORIES=karthikeyan-karuppiah/home-lab.git
+      # Keeps the container running and runs checks every 3 hours
+      - RENOVATE_CRON=0 */8 * * *
+      # Optional: Autodiscover all repos your token has access to
+      # - RENOVATE_AUTODISCOVER=true
+    volumes:
+      # Caches data on your TerraMaster hard drives to protect your NAS RAM
+      - /Volume1/homes/carthy_k/renovate/cache:/tmp/renovate
