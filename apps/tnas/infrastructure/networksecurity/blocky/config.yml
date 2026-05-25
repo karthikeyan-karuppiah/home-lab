@@ -1,13 +1,15 @@
 upstreams:
   groups:
     default:
-      - https://quad9.net
+      # FIX: Appended '/dns-query' endpoints required for DNS-over-HTTPS (DoH)
+      - https://dns.quad9.net/dns-query
       - https://cloudflare-dns.com
 
 blocking:
   denylists:
     ads:
-      - https://githubusercontent.com
+      # FIX: Added 'raw.' prefix and mapped the full text target path to StevenBlack
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
   clientGroupsBlock:
     default:
       - ads
