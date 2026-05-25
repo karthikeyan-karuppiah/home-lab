@@ -1,0 +1,29 @@
+name: Automatic SemVer Tagging
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Gives GitHub permission to safely write the tag back to your repo
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required to read previous tags and calculate the bump correctly
+
+      - name: Calculate and Push Tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          # NATIVE PERMISSION: Handled automatically by GitHub. Safe and tokenless.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Ensures tags look like v1.0.1 (matching your Blocky/Doco-CD setup)
+          with_v: true
+          # Default fallback if no specific keywords are found in commit messages
+          default_bump: patch 
