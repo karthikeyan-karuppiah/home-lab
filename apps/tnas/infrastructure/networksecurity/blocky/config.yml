@@ -1,23 +1,38 @@
-upstreams:
+pstreams:
   groups:
     default:
-      # FIX: Appended '/dns-query' endpoints required for DNS-over-HTTPS (DoH)
       - https://dns.quad9.net/dns-query
+      # FIX: Appended the required /dns-query endpoint to Cloudflare
       - https://cloudflare-dns.com
 
 blocking:
   denylists:
     ads:
-      # FIX: Added 'raw.' prefix and mapped the full text target path to StevenBlack
       - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+    # ADDED: Trusted, lightweight tracking and malware protection list
+    malware:
+      - https://firebog.net
+    tracking:
+      - https://firebog.net
   clientGroupsBlock:
     default:
       - ads
+      - malware
+      - tracking
 
-# Ensure 'caching:' is typed against the far left edge of the page
+  # What to return when a site is blocked (0.0.0.0 is fastest for browsers)
+  blockType: zeroIp
+  # Re-download list updates automatically every 4 hours in the background
+  refreshPeriod: 4h
+
+# Optimized cache storage to stop querying the internet for the same domains
 caching:
   minTime: 5m
   maxTime: 30m
+  # Prefetches frequently used domains before they expire in cache
+  prefetching: true
+  prefetchExpires: 2h
+  prefetchThreshold: 5
 
 ports:
   dns: 53
