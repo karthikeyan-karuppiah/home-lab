@@ -1,11 +1,47 @@
-name: Automatic SemVer Tagging
+name: CI & Automatic SemVer Tagging
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
+  lint-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Native Yamllint
+      - name: Run Native YAML Lint Check
+        run: |
+          echo "=== Running Native YAML Validation ==="
+          echo -e "extends: default\nrules:\n  line-length: disable\n  document-start: disable" > .yamllint
+          yamllint -c .yamllint .
+
+      # 2. Native Compose Validation
+      - name: Validate Docker Compose Structural Integrity
+        run: |
+          echo "=== Verifying Docker Compose Specifications ==="
+          find . -name "docker-compose.yml" -o -name "compose.yml" | while read -r file; do
+            echo "Checking integrity of specification profile: $file"
+            docker compose -f "$file" config --quiet
+          done
+
+      # 3. ADDED: Native Hadolint Dockerfile Check (Zero-Dependency)
+      - name: Validate Dockerfile Best Practices with Hadolint
+        run: |
+          echo "=== Running Native Dockerfile Lint Checks ==="
+          # Find all files named Dockerfile or ending in .dockerfile
+          find . -name "Dockerfile" -o -name "*.dockerfile" | while read -r file; do
+            echo "Linting Dockerfile: $file"
+            # Run hadolint via its official lightweight docker image
+            docker run --rm -i hadolint/hadolint < "$file"
+          done
+
   deploy-tag:
     runs-on: ubuntu-latest
     permissions:
