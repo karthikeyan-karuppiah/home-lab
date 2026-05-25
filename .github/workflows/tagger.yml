@@ -62,4 +62,4 @@ jobs:
           # Ensures tags look like v1.0.1 (matching your Blocky/Doco-CD setup)
           with_v: true
           # Default fallback if no specific keywords are found in commit messages
-          default_bump: patch 
+          default_bump: patch
