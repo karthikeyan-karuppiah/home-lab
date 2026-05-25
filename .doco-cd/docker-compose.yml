@@ -12,17 +12,17 @@ services:
     environment:
       TZ: Europe/Berlin
       # see : https://doco.cd/latest/Advanced/Encryption/
-      SOPS_AGE_KEY_FILE: /run/secrets/sops_age_key 
+      SOPS_AGE_KEY_FILE: /run/secrets/sops_age_key
       # GIT_ACCESS_TOKEN: xxx
       # WEBHOOK_SECRET: xxx  # Uncomment this line and the webhook port above and set a secure secret if you want to use webhooks.
       # <<: *poll-config  # Uncomment this line to use the poll configuration from above (the `x-poll-config` section).
       # Docker compose reads this directly from the local .env file
       # preview the configuration to ensure the variable is being read correctly by running `docker compose config`
-      GIT_ACCESS_TOKEN : ${GIT_ACCESS_TOKEN}
-      POLL_CONFIG: |   
+      GIT_ACCESS_TOKEN: ${GIT_ACCESS_TOKEN}
+      POLL_CONFIG: |  
         - url: https://github.com/karthikeyan-karuppiah/home-lab.git
-          reference: main 
-          interval: 1800 
+          reference: main
+          interval: 1800
           # leaving empty will look for .doco-cd.yaml in the root of the repository
           # if you set target : "staging" it looks for .doco-cd.staging.yaml instead
           # if you set target : "production" it looks for .doco-cd.production.yaml instead
@@ -35,13 +35,13 @@ services:
     cap_drop:
       - ALL
     healthcheck:
-      test: [ "CMD", "/doco-cd", "healthcheck" ]
+      test: ["CMD", "/doco-cd", "healthcheck"]
       start_period: 15s
       interval: 30s
       timeout: 5s
       retries: 3
     secrets:
-      - sops_age_key 
+      - sops_age_key
 secrets:
   sops_age_key:
     file: /volume1/.config/age/keys.txt
