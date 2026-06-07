@@ -1,6 +1,8 @@
 services:
     wg-easy:
         container_name: wg-easy
+        env_file:
+          - docker-compose.enc.env
         environment:
           - PUID=0  # replace with your superuser id
           - PGID=0  # replace with your superuser group id
