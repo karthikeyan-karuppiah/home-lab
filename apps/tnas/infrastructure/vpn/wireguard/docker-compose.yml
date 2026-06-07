@@ -2,25 +2,23 @@ services:
     wg-easy:
         container_name: wg-easy
         env_file:
-          - docker-compose.enc.env
+          - docker-compose.enc.env # Doco-CD decrypts this and injects the keys directly
         environment:
-          - PUID=0  # replace with your superuser id
-          - PGID=0  # replace with your superuser group id
-          - TZ=Europe/Brussels  # replace with your timezone
+          - PUID=0  
+          - PGID=0  
+          - TZ=Europe/Brussels  
           - LANG=en
-          - WG_HOST=${WG_HOST}
-          - WG_PASSWORD_HASH=${WG_PASSWORD_HASH}
-          - PASSWORD_HASH=${PASSWORD_HASH}
+          # REMOVED THE BROKEN ${WG_HOST} LINES FROM HERE
         volumes:
             - /Volume1/DockerAppsData/Wireguard:/etc/wireguard
         ports:
-            - 51820:51820/udp  # leave as default or choose a different port for routed traffic
-            - 51821:51821/tcp  # leave as default or choose a different port for WebUI
+            - 51820:51820/udp  
+            - 51821:51821/tcp  
         cap_add:
             - NET_ADMIN
             - SYS_MODULE
         sysctls:
             - net.ipv4.conf.all.src_valid_mark=1
             - net.ipv4.ip_forward=1
-        restart: always  # will always start at boot
+        restart: always  
         image: ghcr.io/wg-easy/wg-easy
