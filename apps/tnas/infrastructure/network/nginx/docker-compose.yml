@@ -1,0 +1,11 @@
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - "80:80"        # Listens for raw web traffic (like http://music.home)
+      - "81:81"        # The Web Admin Portal layout dashboard
+      - "443:443"      # Mapped for future local SSL/HTTPS security layers
+    volumes:
+      - /Volume1/DockerAppsData/nginx-proxy/data:/data
+      - /Volume1/DockerAppsData/nginx-proxy/letsencrypt:/etc/letsencrypt
