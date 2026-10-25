@@ -1,14 +1,15 @@
----
+
 
 ## 🛠️ Step-by-Step Technical Breakdown
 
 ### Step 1: Client-Side Edge Partitioning (Split-Tunneling)
 When your iPhone is out on a cellular data connection, it evaluates every single network request before sending it out. Because we switched our infrastructure configuration from a **Full Tunnel** (`0.0.0.0/0`) to a **Split Tunnel**, the phone behaves as a dual-router:
 
-* **Regular Public Request:** If you navigate to `google.com`, your iPhone checks its local WireGuard interface configuration rules. `google.com` does not match your home lab parameters, so the data is sent directly over standard mobile carrier networks. Your home internet upload speed is completely unaffected.
-* **Targeted Homelab Request:** The exact millisecond you attempt to pull a stream or request an address matching your custom local network subnet space, your iPhone encrypts the payload packet using high-performance cryptographic keys and routes it over the internet to your **DuckDNS** endpoint domain name.
+- **Regular Public Request:** If you navigate to `google.com`, your iPhone checks its local WireGuard interface configuration rules. `google.com` does not match your home lab parameters, so the data is sent directly over standard mobile carrier networks. Your home internet upload speed is completely unaffected.
+- **Targeted Homelab Request:** The exact millisecond you attempt to pull a stream or request an address matching your custom local network subnet space, your iPhone encrypts the payload packet using high-performance cryptographic keys and routes it over the internet to your **DuckDNS** endpoint domain name.
 
----
+
+
 
 ### Step 2: The Gateway Entrance & Packet Handoff (`wg-easy`)
 The incoming encrypted phone packet hits your residential home internet gateway router. 
@@ -21,7 +22,7 @@ The incoming encrypted phone packet hits your residential home internet gateway 
    ```
 3. **The Kernel Bridge:** Once inside, `wg-easy` validates your phone's signature and decrypts the package. Because we added the system configuration parameter flag `net.ipv4.ip_forward=1`, the host operating system kernel gives the container explicit clearance to pass this data outside of its own boundaries and across your other internal Docker container networks.
 
----
+
 
 ### Step 3: Domain Resolution Hijacking (`blocky`)
 Now that the packet is past the front gate, your iPhone needs to translate the plain text string `music.home` into a numerical address it can communicate with. 
@@ -42,7 +43,7 @@ Now that the packet is past the front gate, your iPhone needs to translate the p
    ```
    Blocky responds down the tunnel to your phone: *"Go directly to your local NAS network address."*
 
----
+
 
 ### Step 4: Vault Execution (`navidrome`)
 Now that your iPhone has successfully resolved the address layout via Blocky, it makes a standard web call over the encrypted tunnel straight to the destination point: **`http://<YOUR_NAS_LOCAL_IP>:4533`**.
