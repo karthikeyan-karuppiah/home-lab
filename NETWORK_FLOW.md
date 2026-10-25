@@ -1,13 +1,10 @@
-
-
 ## 🛠️ Step-by-Step Technical Breakdown
 
 ### Step 1: Client-Side Edge Partitioning (Split-Tunneling)
 When your iPhone is out on a cellular data connection, it evaluates every single network request before sending it out. Because we switched our infrastructure configuration from a **Full Tunnel** (`0.0.0.0/0`) to a **Split Tunnel**, the phone behaves as a dual-router:
 
 - **Regular Public Request:** If you navigate to `google.com`, your iPhone checks its local WireGuard interface configuration rules. `google.com` does not match your home lab parameters, so the data is sent directly over standard mobile carrier networks. Your home internet upload speed is completely unaffected.
-- **Targeted Homelab Request:** The exact millisecond you attempt to pull a stream or request an address matching your custom local network subnet space, your iPhone encrypts the payload packet using high-performance cryptographic keys and routes it over the internet to your **DuckDNS** endpoint domain name.
-
+- **Targeted Homelab Request:** The exact millisecond you attempt to pull a stream from `http://music.home:8080`, your iPhone checks its local routing tables. The target matches your home network space, so your iPhone encrypts the payload packet using high-performance cryptographic keys and routes it over the internet to your **DuckDNS** endpoint domain name.
 
 
 
@@ -27,7 +24,7 @@ The incoming encrypted phone packet hits your residential home internet gateway 
 ### Step 3: Domain Resolution Hijacking (`blocky`)
 Now that the packet is past the front gate, your iPhone needs to translate the plain text string `music.home` into a numerical address it can communicate with. 
 
-1. **The Injected Command:** When the WireGuard session first shook hands, your container injected your internal target address configuration parameter directly into your phone’s memory. Your phone automatically routes the DNS query straight to your local NAS network interface on Port 53.
+1. **The Injected Command:** When the WireGuard session first shook hands, your container injected your internal target address configuration parameter directly into your phone’s memory (`WG_DEFAULT_DNS`). Your phone automatically routes the DNS query straight to your local NAS network interface on Port 53.
 2. **The Port 53 Hijack:** Port 53 is the global standard channel for internet name lookups. Inside your deployment files, the **Blocky** proxy container has locked down and claimed exclusive control over that network port on your NAS system:
    ```yaml
    ports:
@@ -41,12 +38,25 @@ Now that the packet is past the front gate, your iPhone needs to translate the p
      mapping:
        music.home: <YOUR_NAS_LOCAL_IP>
    ```
-   Blocky responds down the tunnel to your phone: *"Go directly to your local NAS network address."*
+   *Note: DNS records only resolve names to raw IPs and are completely blind to port channels. Blocky returns the raw NAS IP address, and your browser reappends the requested port extension (`:8080`) to the destination envelope.*
 
 
 
-### Step 4: Vault Execution (`navidrome`)
-Now that your iPhone has successfully resolved the address layout via Blocky, it makes a standard web call over the encrypted tunnel straight to the destination point: **`http://<YOUR_NAS_LOCAL_IP>:4533`**.
+### Step 4: The Intelligent Interception (`nginx-proxy-manager`)
+Now that your iPhone has resolved the name string down to an IP, it executes a web request targeting **`http://<YOUR_NAS_LOCAL_IP>:8080`**.
 
-1. Your NAS operating system checks its routing map, sees that port **`4533`** belongs to your **Navidrome** container, and lands the traffic right inside your music application core.
-2. Navidrome authenticates your login profile, reads your local audio file media properties mounted securely via your read-only volume directory mapping, and pumps the encrypted music data stream cleanly back down the WireGuard tunnel directly to your iPhone app interface!
+1. **Bypassing the Host System:** Because TerraMaster OS (TOS) completely occupies Port 80 on your network card, targeting port **`8080`** allows your data payload to entirely bypass the main NAS management workspace desktop portal.
+2. **The Reverse Proxy Receptionist:** Inside Docker, Nginx Proxy Manager is monitoring port `8080` for active traffic streams:
+   ```yaml
+   ports:
+     - "8080:80"
+   ```
+   Nginx intercepts the request, pulls open the data packet, and reads the incoming host header name: **`music.home`**.
+
+
+
+### Step 5: Vault Execution (`navidrome`)
+Nginx Proxy Manager checks its internal routing index database table for the `music.home` rule block.
+
+1. **The Internal Handoff:** Nginx matches the domain to your custom entry rule and sees that the traffic needs to be forwarded to your music server container. It shifts the payload internally over to port **`4533`**.
+2. **Isolated Streaming:** Your NAS operating system drops the traffic straight inside your **Navidrome** core container stack. Navidrome validates your user authentication profile session, reads your local audio tracks mounted via your read-only volume directory mapping, and pumps the secure music data stream back through your Nginx container, across the WireGuard network bridge, and directly onto your iPhone interface client!
