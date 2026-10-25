@@ -1,5 +1,52 @@
 ## 🛠️ Step-by-Step Technical Breakdown
 
+## 🗺️ High-Level Architectural Flowchart
+
+\`\`\`text
+[ iPhone Mobile Data Session ]
+(Targeting: http://music.home:8080)
+              │
+              ▼
+[ Step 1: iPhone Local Routing Evaluation ]
+Checks: Is target IP inside your AllowedIPs rule?
+(AllowedIPs = <YOUR_NAS_LOCAL_IP_SUBNET>, 10.8.0.0/24)
+              │
+              ├─► (No)  ──► Bypasses Home Lab (Goes to Normal Internet)
+              │
+              └─► (Yes) ──► Diverts directly into secure VPN tunnel
+                                   │
+                                   ▼
+                      🔐 Layer 1: WG-EASY Container
+                      (Receives and decrypts tunnel traffic)
+                                   │
+                                   ▼
+                      [ Step 2: Injected DNS Lookup Request ]
+                      iPhone asks: "Where is music.home?"
+                                   │
+                                   ▼
+                      🗺️ Layer 2: BLOCKY Container
+                      (Intercepts name query on Port 53)
+                      Resolves domain name to: <YOUR_NAS_LOCAL_IP>
+                                   │
+                                   ▼
+                      [ Step 3: Local Network Execution ]
+                      Traffic knocks on local Port 8080
+                                   │
+                                   ▼
+                      🔀 Layer 3: NGINX PROXY MANAGER
+                      (Intercepts traffic on Port 8080)
+                      Reads the incoming hostname "music.home"
+                      Forwards traffic internally to Port 4533
+                                   │
+                                   ▼
+                      🎵 Layer 4: NAVIDROME Container
+                      (Intercepts traffic on Port 4533)
+                                   │
+                                   ▼
+                      [ Read-Only Storage Mounts ]
+                      Pulls audio files from <YOUR_MUSIC_FOLDER_PATH>
+\`\`\`
+
 ### Step 1: Client-Side Edge Partitioning (Split-Tunneling)
 When your iPhone is out on a cellular data connection, it evaluates every single network request before sending it out. Because we switched our infrastructure configuration from a **Full Tunnel** (`0.0.0.0/0`) to a **Split Tunnel**, the phone behaves as a dual-router:
 
