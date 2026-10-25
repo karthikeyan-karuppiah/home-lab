@@ -1,41 +1,78 @@
 # Home Infrastructure Lab
 
-[![GitOps: Doco-CD](https://shields.io)](https://github.com)
-[![Platform: TOS](https://shields.io)](https://terra-master.com)
-
-An enterprise-grade, GitOps-driven home infrastructure monorepo managing core network utilities and media orchestration services deployed on a self-hosted TerraMaster NAS (TNAS) cluster.
+A declarative, GitOps-driven infrastructure monorepo for managing private network utilities, secure edge ingress, and media orchestration services deployed on an **Intel-powered TerraMaster F4-424 Pro** NAS cluster.
 
 ---
 
-## Architecture & Continuous Delivery Workflow
+## 🏗️ System Architecture & GitOps Workflow
 
-This repository implements a declarative infrastructure-as-code (IaC) methodology. Continuous Delivery is orchestrated via **Doco-CD**, acting as an on-premise GitOps controller.
+This repository implements an infrastructure-as-code (IaC) methodology to enforce an isolated **Split-Tunnel "Security Sandwich"** network topology.
+
+* **Continuous Delivery**: Handled natively by **Doco-CD**, acting as an on-premise GitOps controller that continuously reconciles state updates from the `main` branch.
+* **Network Hardening**: Exposes a single cryptographic edge ingress point via WireGuard. All underlying infrastructure portals, databases, and application UIs are completely insulated from the public web.
+
+🔎 For a comprehensive packet journey mapping, see the [Network Traffic & Routing Deep-Dive](NETWORK_FLOW.md).
 
 ---
 
-## Service Catalog & Specifications
+## 🛠️ Service Catalog & Specifications
 
-### Core Network Services
+### 🔐 Edge Ingress & Routing
 
-#### 1. Blocky (`/blocky`)
-An enterprise-grade, ultra-lightweight DNS proxy and network-wide sinkhole designed for security hardening and local resolution management.
-* **Upstream Delivery**: DNS-over-HTTPS (DoH) utilizing secure endpoints (Quad9, Cloudflare).
-* **Compliance & Security**: Automated blocking via centralized hosts/domain telemetry lists.
+#### 1. WireGuard VPN (`/wg-easy`)
+Provides high-performance, cryptographic remote entry paths into the lab network using a fast Split-Tunnel layout.
+* **Dynamic Endpoint Routing**: Enforced via **DuckDNS** (`carthytnas.duckdns.org`) to maintain connection states across dynamic ISP public IP rotations.
+* **Image Registry**: `ghcr.io/wg-easy/wg-easy`
+
+#### 2. Nginx Proxy Manager (`/nginx-proxy-manager`)
+Acts as the central reverse proxy and application layer router to handle hostname evaluation and decouple port configurations.
+* **Capability**: Exposes clean internal proxy channels and manages upstream data flows.
+* **Image Registry**: `jc21/nginx-proxy-manager`
+
+### 🗺️ Network & Media Core
+
+#### 3. Blocky (`/blocky`)
+An ultra-lightweight local DNS proxy and network-wide sinkhole designed for local domain mapping and privacy hardening.
+* **Upstream Delivery**: DNS-over-HTTPS (DoH) utilizing secure endpoints via Quad9 (`dns.quad9.net`) and Cloudflare.
+* **Telemetry Protection**: Intercepts tracking and advertisement scripts at the name-resolution stage.
 * **Image Registry**: `ghcr.io/0xerr0r/blocky`
 
-#### 2. Navidrome (`/navidrome`)
-A cloud-native, high-performance music streaming server subsystem compliant with Subsonic/Madsonic API specifications.
+#### 4. Navidrome (`/navidrome`)
+A streaming server subsystem compliant with Subsonic/Madsonic API specifications to host private media assets.
 * **Capability**: Multithreaded library indexing, metadata extraction, and streaming abstraction.
 * **Image Registry**: `deluan/navidrome`
 
-### Network Topology & Port Matrix
+---
 
+## 📊 Network Topology & Port Matrix
 
-| Subsystem | Container Port | Host Port | Network Layer | Boundary / Purpose |
+The host operating system kernel rules enforce strict port boundaries. Only the WireGuard ingress port is mapped to your perimeter gateway.
+
+| Subsystem Component | Container Port | Host Port | Network Layer | Boundary / Purpose |
 | :--- | :--- | :--- | :--- | :--- |
-| **Blocky DNS** | `53/udp` | `53` (or `5353`) | Layer 4 (UDP) | Ingress Network Resolution |
-| **Blocky DNS** | `53/tcp` | `53` (or `5353`) | Layer 4 (TCP) | TCP Fallback Resolution |
-| **Blocky API** | `4000/tcp` | `4000` | Layer 7 (HTTP) | Telemetry, Metrics & Health |
-| **Navidrome UI** | `4533/tcp` | `4533` | Layer 7 (HTTP) | Media Streaming Ingress |
+| **WireGuard Ingress** | `51820/udp` | `51820` | Layer 4 (UDP) | Mapped Gateway Cryptographic Entry |
+| **WireGuard UI** | `51821/tcp` | `51821` | Layer 7 (HTTP) | Internal Peer Management Portal |
+| **Blocky DNS Proxy** | `53/udp` | `53` | Layer 4 (UDP) | Internal Network Resolution Ingress |
+| **Blocky DNS Proxy** | `53/tcp` | `53` | Layer 4 (TCP) | Internal Fallback TCP Resolution |
+| **Blocky API & Metrics** | `4000/tcp` | `4000` | Layer 7 (HTTP) | Health Check / Telemetry Endpoint |
+| **Nginx Proxy Manager** | `80/tcp` | `8080` | Layer 7 (HTTP) | Local Hostname Routing Engine (`music.home`) |
+| **Nginx UI Dashboard** | `81/tcp` | `81` | Layer 7 (HTTP) | Internal Proxy Rules Configuration |
+| **Nginx Secure Ingress** | `443/tcp` | `8443` | Layer 7 (HTTPS)| Mapped for Local SSL Security Layers |
+| **Navidrome Engine** | `4533/tcp` | `4533` | Layer 7 (HTTP) | Dedicated Media Core Backend Ingress |
 
 ---
+
+## 📂 Storage Architecture & Volume Strategy
+
+To maximize system security and preserve container statelessness, host mount spaces are cleanly partitioned between persistent application databases and absolute Read-Only data volumes:
+
+```text
+/Volume1/
+├── DockerAppsData/
+│   ├── Wireguard/           # Cryptographic tunnel peer profile states
+│   ├── blocky/              # Core YAML local domain network maps
+│   ├── nginx-proxy/         # Host routing tables and SQLite files
+│   └── navidrome/data/      # User database metadata index configurations
+└── homes/carthy_k/
+    └── songs/               # Media Storage Vault (:ro Read-Only Mount)
+```
