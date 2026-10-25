@@ -2,7 +2,7 @@
 
 ## 🗺️ High-Level Architectural Flowchart
 
-\`\`\`text
+```text
 [ iPhone Mobile Data Session ]
 (Targeting: http://music.home:8080)
               │
@@ -45,7 +45,7 @@ Checks: Is target IP inside your AllowedIPs rule?
                                    ▼
                       [ Read-Only Storage Mounts ]
                       Pulls audio files from <YOUR_MUSIC_FOLDER_PATH>
-\`\`\`
+```
 
 ### Step 1: Client-Side Edge Partitioning (Split-Tunneling)
 When your iPhone is out on a cellular data connection, it evaluates every single network request before sending it out. Because we switched our infrastructure configuration from a **Full Tunnel** (`0.0.0.0/0`) to a **Split Tunnel**, the phone behaves as a dual-router:
