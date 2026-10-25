@@ -6,9 +6,9 @@ services:
     container_name: nginx-proxy-manager
     restart: unless-stopped
     ports:
-      - "80:80"        # Mapped to listen for raw HTTP web requests
+      - "8080:80"        # Mapped to listen for raw HTTP web requests
       - "81:81"        # Mapped to expose the configuration dashboard admin screen
-      - "443:443"      # Mapped to process secure local SSL/HTTPS data channels
+      - "8443:443"      # Mapped to process secure local SSL/HTTPS data channels
     volumes:
       - /Volume1/DockerAppsData/nginx-proxy/data:/data
       - /Volume1/DockerAppsData/nginx-proxy/letsencrypt:/etc/letsencrypt
