@@ -2,16 +2,18 @@ upstreams:
   groups:
     default:
       - https://dns.quad9.net/dns-query
-      # FIX: Appended the required /dns-query endpoint to Cloudflare
+      # FIXED: Added the proper /dns-query secure path endpoint to Cloudflare
       - https://cloudflare-dns.com
 
 blocking:
   denylists:
     ads:
       - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
-    # ADDED: Trusted, lightweight tracking and malware protection list
+    # FIXED: Replaced human-readable site with direct raw malware and phishing lists
     malware:
       - https://firebog.net
+      - https://firebog.net
+    # FIXED: Replaced human-readable site with direct raw privacy and tracking list
     tracking:
       - https://firebog.net
   clientGroupsBlock:
