@@ -18,7 +18,7 @@ services:
       
     environment:
       - RENOVATE_TOKEN_FILE=/run/secrets/renovate-token
-      - LOG_LEVEL=info
+      - LOG_LEVEL=trace
       - RENOVATE_AUTODISCOVER=false
       - RENOVATE_REPOSITORIES=karthikeyan-karuppiah/home-lab
       - RENOVATE_PLATFORM=github
