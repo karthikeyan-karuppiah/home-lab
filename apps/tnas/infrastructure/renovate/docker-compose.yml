@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  renovate:
+    image: renovate/renovate:39
+    container_name: renovate-bot
+    restart: unless-stopped
+    environment:
+      - RENOVATE_PLATFORM=github
+      - RENOVATE_TOKEN_FILE=./docker-compose.enc.env
+      - RENOVATE_REPOSITORIES=karthikeyan-karuppiah/home-lab
+      - RENOVATE_CRON_APP=true
+      - RENOVATE_CRON=0 */8 * * *
+    volumes:
+      - /Volume1/homes/carthy_k/renovate/cache:/tmp/renovate
