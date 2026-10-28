@@ -48,17 +48,30 @@ services:
         $$DL "https://github.com/getsops/sops/releases/download/v3.13.1/sops-v3.13.1.linux.$${SOPS_ARCH}" > /tmp/sops
         chmod +x /tmp/sops
 
-        export SOPS_AGE_KEY_FILE=/run/secrets/age-key
+        # Force the age key via environment variable (more reliable than the file)
+        export SOPS_AGE_KEY=$$(grep '^AGE-SECRET-KEY-' /run/secrets/age-key)
 
-        # JSON extract is reliable
-        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
-
-        if [ -z "$$RENOVATE_TOKEN" ]; then
-          echo "ERROR: failed to decrypt RENOVATE_TOKEN" >&2
+        if [ -z "$$SOPS_AGE_KEY" ]; then
+          echo "ERROR: could not extract AGE-SECRET-KEY from /run/secrets/age-key" >&2
+          cat /run/secrets/age-key >&2
           exit 1
         fi
 
-        echo "Token decrypted successfully"
+        echo "Using age key starting with: $$(echo $$SOPS_AGE_KEY | cut -c1-30)..."
+
+        # Try decrypt
+        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token 2>&1) || true
+
+        if [ -z "$$RENOVATE_TOKEN" ] || echo "$$RENOVATE_TOKEN" | grep -q "metadata not found\|Error\|error"; then
+          echo "ERROR: failed to decrypt" >&2
+          echo "----- sops output -----" >&2
+          /tmp/sops --decrypt --verbose /run/secrets/renovate-token >&2 || true
+          echo "----- file content (first 20 lines) -----" >&2
+          head -20 /run/secrets/renovate-token >&2
+          exit 1
+        fi
+
+        echo "Token decrypted successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
         exec renovate "$$@"
 
 
