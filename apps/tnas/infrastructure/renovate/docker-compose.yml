@@ -32,7 +32,6 @@ services:
       - |
         set -e
 
-        # Use wget if curl is missing (common in renovate image)
         if command -v curl >/dev/null 2>&1; then
           DL="curl -fsSL"
         elif command -v wget >/dev/null 2>&1; then
@@ -54,17 +53,15 @@ services:
         $$DL "https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.$${SOPS_ARCH}" > /tmp/sops
         chmod +x /tmp/sops
 
-        # Quick sanity check
         if ! /tmp/sops --version >/dev/null 2>&1; then
-          echo "ERROR: downloaded sops binary is not executable or wrong architecture" >&2
-          file /tmp/sops || true
+          echo "ERROR: downloaded sops binary is broken" >&2
           exit 1
         fi
 
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
 
-        # Prefer exec-env (works best with dotenv files)
-        exec /tmp/sops exec-env /run/secrets/renovate-token renovate
+        # Force dotenv format
+        exec /tmp/sops exec-env --input-type dotenv /run/secrets/renovate-token renovate
 
 secrets:
   renovate-token:
