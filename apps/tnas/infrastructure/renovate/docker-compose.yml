@@ -64,7 +64,7 @@ services:
 
 secrets:
   renovate-token:
-    file: ./docker-compose.enc.env
+    file: ./renovate-token.sops.json
   age-key:
     # Reaches out to your primary, master private age key file on the local NAS filesystem path
     file: /volume1/.config/age/keys.txt
