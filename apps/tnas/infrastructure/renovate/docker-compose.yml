@@ -1,40 +1,68 @@
 services:
   renovate:
+    # Official Renovate image (pinned to a specific version for reproducibility)
     image: renovate/renovate:44.181.0
     container_name: renovate
+
+    # "no" = do not restart automatically.
+    # This is a one-off job controlled by doco-cd, not a long-running service.
     restart: "no"
+
+    # Run as root (UID 0). Needed because some volume mounts and
+    # secret reading can have permission issues on TNAS otherwise.
     user: "0:0"
 
+    # Tell Docker Compose to mount the secret defined at the bottom
     secrets:
       - renovate-token
 
     environment:
+      # How much Renovate should log (info is a good balance)
       LOG_LEVEL: info
+
+      # Do not scan every repo the token has access to
       RENOVATE_AUTODISCOVER: "false"
+
+      # Only process this specific repository
       RENOVATE_REPOSITORIES: karthikeyan-karuppiah/home-lab
+
+      # We are using GitHub
       RENOVATE_PLATFORM: github
+
+      # Create an onboarding PR the first time Renovate runs on the repo
       RENOVATE_ONBOARDING: "true"
+
+      # Name + email that will appear on commits made by Renovate
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
 
     volumes:
+      # Persist Renovate's cache so it doesn't re-download everything every run.
+      # Path is on the TNAS host.
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
 
     entrypoint:
       - /bin/sh
       - -c
       - |
-        # doco-cd already decrypted the file for us
+        # ---------------------------------------------------------------
+        # IMPORTANT: doco-cd already decrypted the SOPS file for us.
+        # By the time this container starts, /run/secrets/renovate-token
+        # contains the PLAINTEXT token (either as pure text or as JSON).
+        # We therefore do NOT need to run sops inside the container.
+        # ---------------------------------------------------------------
+
         if [ -f /run/secrets/renovate-token ]; then
-          # Handle both plain token file and JSON
+          # Detect whether the decrypted content is JSON or plain/dotenv
           if head -c 1 /run/secrets/renovate-token | grep -q '{'; then
-            # JSON format
+            # JSON format → extract the value of the "RENOVATE_TOKEN" key
             export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | sed -n 's/.*"RENOVATE_TOKEN"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
           else
-            # Plain text or dotenv style
+            # Plain text or "RENOVATE_TOKEN=ghp_..." style
             export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | tr -d '\r\n' | sed 's/^RENOVATE_TOKEN=//')
           fi
         fi
 
+        # Safety check – fail early if we somehow got an empty token
         if [ -z "$$RENOVATE_TOKEN" ]; then
           echo "ERROR: RENOVATE_TOKEN is empty after reading secret" >&2
           echo "Secret content:" >&2
@@ -42,16 +70,33 @@ services:
           exit 1
         fi
 
+        # Just for visibility in the logs
         echo "Token loaded successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
+
+        # Hand over to the real Renovate process
+        # "$$@" passes any extra arguments that might be given
         exec renovate "$$@"
 
     labels:
+      # --- doco-cd job configuration ---
+      # Enable this stack as a scheduled job
       cd.doco.job.enabled: "true"
+
+      # Cron schedule: every day at 01:30
       cd.doco.job.schedule: "30 1 * * *"
+
+      # Run once and exit (do not keep the container running)
       cd.doco.job.execution_mode: "one_off"
+
+      # If a previous run is still going, skip this one
       cd.doco.job.skip_running: "true"
 
+# ---------------------------------------------------------------
+# Secret definition
+# ---------------------------------------------------------------
+# This points to the encrypted file that lives in your Git repo.
+# doco-cd will decrypt it automatically before starting the container
+# and mount the decrypted content at /run/secrets/renovate-token.
 secrets:
   renovate-token:
     file: ./renovate-token.sops.json
-
