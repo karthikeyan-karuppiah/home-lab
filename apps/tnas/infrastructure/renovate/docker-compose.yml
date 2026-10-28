@@ -60,8 +60,18 @@ services:
 
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
 
-        # Force dotenv format
-        exec /tmp/sops exec-env --input-type dotenv /run/secrets/renovate-token renovate
+        # Decrypt as dotenv and extract the token
+        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --input-type dotenv /run/secrets/renovate-token | grep '^RENOVATE_TOKEN=' | cut -d= -f2- | tr -d '\r\n')
+
+        if [ -z "$$RENOVATE_TOKEN" ]; then
+          echo "ERROR: failed to extract RENOVATE_TOKEN" >&2
+          echo "----- decrypted content -----" >&2
+          /tmp/sops --decrypt --input-type dotenv /run/secrets/renovate-token >&2 || true
+          exit 1
+        fi
+
+        echo "Token decrypted successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
+        exec renovate "$$@"
 
 secrets:
   renovate-token:
