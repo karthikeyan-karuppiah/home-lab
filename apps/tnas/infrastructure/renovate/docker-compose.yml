@@ -49,8 +49,9 @@ services:
           *) echo "Unsupported architecture: $$ARCH" >&2; exit 1 ;;
         esac
 
-        echo "Downloading sops for $$SOPS_ARCH..."
-        $$DL "https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.$${SOPS_ARCH}" > /tmp/sops
+        SOPS_VERSION=3.13.1
+        echo "Downloading sops $$SOPS_VERSION for $$SOPS_ARCH..."
+        $$DL "https://github.com/getsops/sops/releases/download/v$${SOPS_VERSION}/sops-v$${SOPS_VERSION}.linux.$${SOPS_ARCH}" > /tmp/sops
         chmod +x /tmp/sops
 
         if ! /tmp/sops --version >/dev/null 2>&1; then
@@ -60,13 +61,15 @@ services:
 
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
 
-        # Decrypt as dotenv and extract the token
-        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --input-type dotenv /run/secrets/renovate-token | grep '^RENOVATE_TOKEN=' | cut -d= -f2- | tr -d '\r\n')
+        # Decrypt as dotenv
+        DECRYPTED=$$(/tmp/sops --decrypt --input-type dotenv /run/secrets/renovate-token)
+
+        export RENOVATE_TOKEN=$$(echo "$$DECRYPTED" | grep '^RENOVATE_TOKEN=' | cut -d= -f2- | tr -d '\r\n')
 
         if [ -z "$$RENOVATE_TOKEN" ]; then
           echo "ERROR: failed to extract RENOVATE_TOKEN" >&2
           echo "----- decrypted content -----" >&2
-          /tmp/sops --decrypt --input-type dotenv /run/secrets/renovate-token >&2 || true
+          echo "$$DECRYPTED" >&2
           exit 1
         fi
 
