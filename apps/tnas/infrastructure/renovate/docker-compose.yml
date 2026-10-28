@@ -32,26 +32,34 @@ services:
       - |
         set -e
 
-        echo "=== Age key file ==="
-        ls -l /run/secrets/age-key
-        echo "--- content (first 10 lines) ---"
-        head -10 /run/secrets/age-key
-        echo "===================="
+        if command -v curl >/dev/null 2>&1; then
+          DL="curl -fsSL"
+        else
+          DL="wget -qO-"
+        fi
 
-        # Download sops (same as before)
-        if command -v curl >/dev/null 2>&1; then DL="curl -fsSL"; else DL="wget -qO-"; fi
         ARCH=$$(uname -m)
-        case $$ARCH in x86_64) SOPS_ARCH=amd64;; aarch64|arm64) SOPS_ARCH=arm64;; *) exit 1;; esac
+        case $$ARCH in
+          x86_64)  SOPS_ARCH=amd64 ;;
+          aarch64|arm64) SOPS_ARCH=arm64 ;;
+          *) echo "Unsupported arch"; exit 1 ;;
+        esac
+
         $$DL "https://github.com/getsops/sops/releases/download/v3.13.1/sops-v3.13.1.linux.$${SOPS_ARCH}" > /tmp/sops
         chmod +x /tmp/sops
 
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
 
-        echo "=== Trying decrypt with verbose ==="
-        /tmp/sops --decrypt --input-type dotenv --verbose /run/secrets/renovate-token || true
+        # JSON extract is reliable
+        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
 
-        exit 1
+        if [ -z "$$RENOVATE_TOKEN" ]; then
+          echo "ERROR: failed to decrypt RENOVATE_TOKEN" >&2
+          exit 1
+        fi
 
+        echo "Token decrypted successfully"
+        exec renovate "$$@"
 
 
 secrets:
