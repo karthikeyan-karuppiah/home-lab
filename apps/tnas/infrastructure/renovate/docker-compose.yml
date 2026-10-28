@@ -22,11 +22,9 @@ services:
       # Data cache mapping
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
       
-      # FIX: Mounts the official Alpine-compatible SOPS binary straight from the helper image vault 
-      # into the container's execution path, bypassing host 'noexec' blocks and network downloads entirely.
+      # FIX: Point strictly to the exact binary path inside the mozilla image (/app/sops)
       - sops-binary:/usr/local/bin/sops:ro
 
-    # Much cleaner entrypoint sequence now that SOPS is pre-mounted natively
     entrypoint: 
       - /bin/sh
       - -c
@@ -43,15 +41,15 @@ services:
       cd.doco.job.execution_mode: "one_off"
       cd.doco.job.skip_running: "true"
 
-  # HELPER SIDEKICK IMAGE: Pulls the official Mozilla SOPS release image
   sops-provider:
     image: mozilla/sops:v3.7.3
     container_name: sops-provider
-    # Prevents this helper container from running actively; we only use it as a storage vault for its binary
+    # Fix the volume path mapping here to match the image structure
+    volumes:
+      - sops-binary:/app:ro
     entrypoint: ["/bin/true"]
 
 volumes:
-  # Declares an shared volume mapping that links the provider binary over to the main Renovate application container path
   sops-binary:
 
 secrets:
