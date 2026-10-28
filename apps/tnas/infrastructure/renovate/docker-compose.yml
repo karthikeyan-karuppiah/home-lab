@@ -43,18 +43,18 @@ services:
       
     # Inline execution wrapper sequence. Bypasses NAS "noexec" file execution restrictions
     # by compiling the shell script logic entirely within isolated memory space.
+    # Inline execution wrapper sequence using curl instead of wget
     entrypoint: 
       - /bin/sh
       - -c
       - |
-        # Step 1: Fetch the lightweight Linux AMD64 build of Mozilla SOPS directly into RAM
-        wget -qO /usr/local/bin/sops https://github.com
+        # Step 1: Fetch the lightweight Linux AMD64 build of Mozilla SOPS using curl
+        curl -sSL -o /usr/local/bin/sops https://github.com
         
         # Step 2: Grant execution permission to the binary inside the isolated container layer
         chmod +x /usr/local/bin/sops
         
-        # Step 3: Use SOPS to decrypt your token mount and filter out the 'RENOVATE_TOKEN' string directly to memory.
-        # Double dollar signs ($$) tell Docker Compose to pass the evaluation down to the container's shell environment.
+        # Step 3: Use SOPS to decrypt your token mount and filter out the 'RENOVATE_TOKEN' string directly to memory
         export RENOVATE_TOKEN=$$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
         
         # Step 4: Drop out of the shell script wrapper and pass execution to the main Renovate application engine
