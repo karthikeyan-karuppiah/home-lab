@@ -19,20 +19,21 @@ services:
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
       
     volumes:
-      # Data cache mapping
+      # Preservation cache directory
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
       
-      # FIX: Point strictly to the exact binary path inside the mozilla image (/app/sops)
-      - sops-binary:/usr/local/bin/sops:ro
+      # FIX: Mount your working NAS host sops binary directly as an execution mapping.
+      # This completely bypasses container file-ownership and multi-stage permissions blocks.
+      - /usr/local/bin/sops:/usr/local/bin/sops:ro
 
     entrypoint: 
       - /bin/sh
       - -c
       - |
-        # Step 1: Use the pre-mounted, Alpine-compatible SOPS binary to decrypt your token mount straight to RAM
+        # Step 1: Use the host-forwarded, working SOPS binary to decrypt the token directly to memory
         export RENOVATE_TOKEN=$$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
         
-        # Step 2: Drop out of the shell wrapper and pass execution cleanly to the main Renovate engine
+        # Step 2: Handoff process execution cleanly over to the main Renovate engine
         exec renovate "$$@"
 
     labels:
@@ -40,17 +41,6 @@ services:
       cd.doco.job.schedule: "30 1 * * *"
       cd.doco.job.execution_mode: "one_off"
       cd.doco.job.skip_running: "true"
-
-  sops-provider:
-    image: mozilla/sops:v3.7.3
-    container_name: sops-provider
-    # Fix the volume path mapping here to match the image structure
-    volumes:
-      - sops-binary:/app:ro
-    entrypoint: ["/bin/true"]
-
-volumes:
-  sops-binary:
 
 secrets:
   renovate-token:
