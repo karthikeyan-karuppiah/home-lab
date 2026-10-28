@@ -1,85 +1,62 @@
 services:
   renovate:
-    # Uses the official Mend Renovate CLI image pinned to a stable version
     image: renovate/renovate:44.181.0
     container_name: renovate
-    
-    # dococd manages this container as a cron task, so we disable automatic restarts
     restart: "no"
-    
-    # Force the container identity to root (UID 0). This is required to:
-    # 1. Access root-owned secure Docker Secret mounts (/run/secrets/*)
-    # 2. Allow wget/chmod to download and run the SOPS binary in container RAM
     user: "0:0"
     
-    # Mounts the secure, memory-isolated secret vaults into container memory
     secrets:
       - age-key
       - renovate-token
       
     environment:
-      # Directs the SOPS binary to look for your private decryption key file path
       SOPS_AGE_KEY_FILE: /run/secrets/age-key
-      
-      # Log level configuration (can change from 'info' to 'debug' or 'trace' for deep diagnostics)
       LOG_LEVEL: info
-      
-      # Safety limits: do not automatically scan every repository your token has access to
       RENOVATE_AUTODISCOVER: "false"
-      
-      # Targets your specific home-lab repository path (Format: owner/repo)
       RENOVATE_REPOSITORIES: karthikeyan-karuppiah/home-lab
-      
-      # Explicitly instructs the engine to connect to public GitHub cloud infrastructure
       RENOVATE_PLATFORM: github
-      
-      # Ensures the onboarding pull request mechanism remains active for new configurations
       RENOVATE_ONBOARDING: "true"
+      RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
       
     volumes:
-      # Maps Renovate's internal compilation workspace to a hard drive path on your TerraMaster NAS.
-      # This preserves registry lookups across cron runs to prevent hitting public registry rate limits.
+      # Data cache mapping
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
       
-    # Inline execution wrapper sequence. Bypasses NAS "noexec" file execution restrictions
-    # by compiling the shell script logic entirely within isolated memory space.
-    # Inline execution wrapper sequence using curl instead of wget
+      # FIX: Mounts the official Alpine-compatible SOPS binary straight from the helper image vault 
+      # into the container's execution path, bypassing host 'noexec' blocks and network downloads entirely.
+      - sops-binary:/usr/local/bin/sops:ro
+
+    # Much cleaner entrypoint sequence now that SOPS is pre-mounted natively
     entrypoint: 
       - /bin/sh
       - -c
       - |
-        # Step 1: Fetch the lightweight Linux AMD64 build of Mozilla SOPS using curl
-        curl -sSL -o /usr/local/bin/sops https://github.com
-        
-        # Step 2: Grant execution permission to the binary inside the isolated container layer
-        chmod +x /usr/local/bin/sops
-        
-        # Step 3: Use SOPS to decrypt your token mount and filter out the 'RENOVATE_TOKEN' string directly to memory
+        # Step 1: Use the pre-mounted, Alpine-compatible SOPS binary to decrypt your token mount straight to RAM
         export RENOVATE_TOKEN=$$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
         
-        # Step 4: Drop out of the shell script wrapper and pass execution to the main Renovate application engine
+        # Step 2: Drop out of the shell wrapper and pass execution cleanly to the main Renovate engine
         exec renovate "$$@"
 
-    # dococd Deployment Cluster Orchestration Engine Metadata
     labels:
-      # Enables automatic job registration discovery for dococd
       cd.doco.job.enabled: "true"
-      
-      # Defines the cron rule: boots the container automatically every single night at 1:30 AM
       cd.doco.job.schedule: "30 1 * * *"
-      
-      # Instructs dococd to execute the scan pass once and shut down cleanly to preserve NAS system resources
       cd.doco.job.execution_mode: "one_off"
-      
-      # Safety gate: prevents dococd from blocking or erroring if an unexpected older job collision is detected
       cd.doco.job.skip_running: "true"
 
-# Cryptographic Token and Encryption Key Local Mappings
+  # HELPER SIDEKICK IMAGE: Pulls the official Mozilla SOPS release image
+  sops-provider:
+    image: mozilla/sops:v3.7.3
+    container_name: sops-provider
+    # Prevents this helper container from running actively; we only use it as a storage vault for its binary
+    entrypoint: ["/bin/true"]
+
+volumes:
+  # Declares an shared volume mapping that links the provider binary over to the main Renovate application container path
+  sops-binary:
+
 secrets:
   renovate-token:
-    # Points to your local file containing the encrypted SOPS payload data blocks
     file: ./docker-compose.enc.env
-    
   age-key:
     # Reaches out to your primary, master private age key file on the local NAS filesystem path
     file: /volume1/.config/age/keys.txt
