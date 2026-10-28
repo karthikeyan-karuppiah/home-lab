@@ -1,5 +1,7 @@
 # Home Infrastructure Lab
 
+[![Renovate](https://shields.io)](https://github.com)
+
 A declarative, GitOps-driven infrastructure monorepo for managing private network utilities, secure edge ingress, and media orchestration services deployed on an **Intel-powered TerraMaster F4-424 Pro** NAS cluster.
 
 ---
@@ -22,12 +24,12 @@ This repository implements an infrastructure-as-code (IaC) methodology to enforc
 #### 1. WireGuard VPN (`/wg-easy`)
 Provides high-performance, cryptographic remote entry paths into the lab network using a fast Split-Tunnel layout.
 * **Dynamic Endpoint Routing**: Enforced via **DuckDNS** (`carthytnas.duckdns.org`) to maintain connection states across dynamic ISP public IP rotations.
-* **Image Registry**: `ghcr.io/wg-easy/wg-easy`
+* **Image Registry**: `ghcr.io/wg-easy/wg-easy:v14` <!-- renovate: datasource=docker depName=ghcr.io/wg-easy/wg-easy -->
 
 #### 2. Nginx Proxy Manager (`/nginx-proxy-manager`)
 Acts as the central reverse proxy and application layer router to handle hostname evaluation and decouple port configurations.
 * **Capability**: Exposes clean internal proxy channels and manages upstream data flows.
-* **Image Registry**: `jc21/nginx-proxy-manager`
+* **Image Registry**: `jc21/nginx-proxy-manager:2.11` <!-- renovate: datasource=docker depName=jc21/nginx-proxy-manager -->
 
 ### 🗺️ Network & Media Core
 
@@ -35,12 +37,12 @@ Acts as the central reverse proxy and application layer router to handle hostnam
 An ultra-lightweight local DNS proxy and network-wide sinkhole designed for local domain mapping and privacy hardening.
 * **Upstream Delivery**: DNS-over-HTTPS (DoH) utilizing secure endpoints via Quad9 (`dns.quad9.net`) and Cloudflare.
 * **Telemetry Protection**: Intercepts tracking and advertisement scripts at the name-resolution stage.
-* **Image Registry**: `ghcr.io/0xerr0r/blocky`
+* **Image Registry**: `ghcr.io/0xerr0r/blocky:v0.24` <!-- renovate: datasource=docker depName=ghcr.io/0xerr0r/blocky -->
 
 #### 4. Navidrome (`/navidrome`)
 A streaming server subsystem compliant with Subsonic/Madsonic API specifications to host private media assets.
 * **Capability**: Multithreaded library indexing, metadata extraction, and streaming abstraction.
-* **Image Registry**: `deluan/navidrome`
+* **Image Registry**: `deluan/navidrome:0.53` <!-- renovate: datasource=docker depName=deluan/navidrome -->
 
 ---
 

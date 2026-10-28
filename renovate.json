@@ -1,3 +1,26 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^README\\.md$"
+      ],
+      "matchStrings": [
+        "`(?<depName>[^`\\s]+):(?<currentValue>[^`\\s]+)`\\s*<!--\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s+depName=(?<extractedDepName>[^\\s]+)\\s*-->"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchFiles": [
+        "README.md"
+      ],
+      "groupName": "Documentation Image Updates",
+      "commitMessageTopic": "README documentation dependencies"
+    }
+  ]
 }
