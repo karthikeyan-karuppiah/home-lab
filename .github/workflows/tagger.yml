@@ -31,42 +31,50 @@ jobs:
             docker compose -f "$file" config --quiet
           done
 
-      # 3. ADDED: Native Hadolint Dockerfile Check (Zero-Dependency)
+      # 3. Native Hadolint Dockerfile Check
       - name: Validate Dockerfile Best Practices with Hadolint
         run: |
           echo "=== Running Native Dockerfile Lint Checks ==="
-          # Find all files named Dockerfile or ending in .dockerfile
           find . -name "Dockerfile" -o -name "*.dockerfile" | while read -r file; do
             echo "Linting Dockerfile: $file"
-            # Run hadolint via its official lightweight docker image
             docker run --rm -i hadolint/hadolint < "$file"
           done
+
+      # 4. ADDED: Native Secret Scanning (Gitleaks Zero-Dependency Execution)
+      # Blocks pushes instantly if an unencrypted token or key is found in the diff history
+      - name: Audit Repository for Secret & Token Leaks
+        run: |
+          echo "=== Running Native Secret Detection Pass ==="
+          docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:v8.18.2 detect --source="/path" --verbose --redact
+
+      # 5. ADDED: Native Container Security Scan (Aqua Trivy Zero-Dependency Execution)
+      # Audits your infrastructure/ compose files for known CVE vulnerabilities
+      - name: Audit Infrastructure Compose Images for CVE Vulnerabilities
+        run: |
+          echo "=== Running Vulnerability Audits on Image Registries ==="
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $(pwd)/.cache:/root/.cache/ aquasec/trivy:0.49.1 config .
 
   deploy-tag:
     runs-on: ubuntu-latest
     needs: lint-infrastructure
-    # CRITICAL ADDITION: Only execute if the event triggering the workflow is a push to 'main'
-    # This completely skips tagging when the workflow runs inside an active, open Pull Request.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
-      contents: write  # Gives GitHub permission to safely write the tag back to your repo
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required to read previous tags and calculate the bump correctly
+          fetch-depth: 0
 
       - name: Calculate and Push Tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
-          # NATIVE PERMISSION: Handled automatically by GitHub. Safe and tokenless.
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Ensures tags look like v1.0.1 (matching your Blocky/Doco-CD setup)
           with_v: true
-          # Default fallback if no specific keywords are found in commit messages
           default_bump: patch
-      # ADDED: Log the newly generated version to the GitHub Actions output
+
       - name: Output Generated Version Details
         run: |
           echo "=== New Version Successfully Generated ==="
