@@ -1,37 +1,47 @@
-version: '3.8'
 services:
   renovate:
     image: renovate/renovate:44.181.0
     container_name: renovate
-    # Runs once and turns off to save your NAS memory RAM
+    # dococd handles the lifecycle execution, so self-restart is disabled
     restart: "no"
     
-    # Tight security profiles
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-      
+    # 1. Force root execution context so the container can read the root-owned secret file
+    user: "0:0"
+    
     # Mounts the secret into secure container RAM at /run/secrets/renovate-token
     secrets:
       - renovate-token
       
     environment:
-      - RENOVATE_TOKEN_FILE=/run/secrets/renovate-token
-      - LOG_LEVEL=trace
-      - RENOVATE_AUTODISCOVER=false
-      - RENOVATE_REPOSITORIES=karthikeyan-karuppiah/home-lab
-      - RENOVATE_PLATFORM=github
-      - RENOVATE_ONBOARDING=true
+      RENOVATE_TOKEN_FILE: /run/secrets/renovate-token
+      LOG_LEVEL: debug
+      RENOVATE_AUTODISCOVER: "false"
+      RENOVATE_REPOSITORIES: karthikeyan-karuppiah/home-lab
+      RENOVATE_PLATFORM: github
+      RENOVATE_ONBOARDING: "true"
+      # Automatically attributes commits to your profile and fixes the Mend warning badge
+      RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <carthy.k@gmail.com>"
       
     volumes:
-      # Data cache mapping on your hard drive
+      # Data cache mapping on your NAS hard drives (perfectly safe from noexec blocks)
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
-      # Maps your script wrapper into the execution path
-      - ./renovate-wrapper.sh:/usr/local/bin/renovate-wrapper.sh:ro
       
-    entrypoint: ["/bin/sh", "/usr/local/bin/renovate-wrapper.sh"]
+    # 2. Bypasses the noexec volume block by executing the wrapper shell script inline out of memory
+    entrypoint: 
+      - /bin/sh
+      - -c
+      - |
+        export RENOVATE_TOKEN=$$(cat $$RENOVATE_TOKEN_FILE)
+        exec renovate "$$@"
+
+    # dococd Orchestration Engine Labels
+    labels:
+      cd.doco.job.enabled: "true"
+      cd.doco.job.schedule: "30 1 * * *"       # Runs every single night at 1:30 AM
+      cd.doco.job.execution_mode: "one_off"    # Tells dococd to spin down the container after a single check pass
+      cd.doco.job.skip_running: "true"
 
 secrets:
   renovate-token:
+    # 3. Points cleanly to your local unencrypted token text file on your drive
     file: ./docker-compose.enc.env
