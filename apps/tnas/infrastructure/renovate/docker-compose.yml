@@ -4,80 +4,54 @@ services:
     container_name: renovate
     restart: "no"
     user: "0:0"
-    
+
     secrets:
-      - age-key
       - renovate-token
-      
+
     environment:
-      SOPS_AGE_KEY_FILE: /run/secrets/age-key
       LOG_LEVEL: info
       RENOVATE_AUTODISCOVER: "false"
       RENOVATE_REPOSITORIES: karthikeyan-karuppiah/home-lab
       RENOVATE_PLATFORM: github
       RENOVATE_ONBOARDING: "true"
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
-      
+
     volumes:
-      # Preservation cache directory
       - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
-      
-      # FIX: Mount your working NAS host sops binary directly as an execution mapping.
-      # This completely bypasses container file-ownership and multi-stage permissions blocks.
-      - /usr/local/bin/sops:/usr/local/bin/sops:ro
 
     entrypoint:
       - /bin/sh
       - -c
       - |
-        set -e
-
-        if command -v curl >/dev/null 2>&1; then
-          DL="curl -fsSL"
-        else
-          DL="wget -qO-"
+        # doco-cd already decrypted the file for us
+        if [ -f /run/secrets/renovate-token ]; then
+          # Handle both plain token file and JSON
+          if head -c 1 /run/secrets/renovate-token | grep -q '{'; then
+            # JSON format
+            export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | sed -n 's/.*"RENOVATE_TOKEN"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+          else
+            # Plain text or dotenv style
+            export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | tr -d '\r\n' | sed 's/^RENOVATE_TOKEN=//')
+          fi
         fi
 
-        ARCH=$$(uname -m)
-        case $$ARCH in
-          x86_64)  SOPS_ARCH=amd64 ;;
-          aarch64|arm64) SOPS_ARCH=arm64 ;;
-          *) echo "Unsupported arch"; exit 1 ;;
-        esac
-
-        $$DL "https://github.com/getsops/sops/releases/download/v3.13.1/sops-v3.13.1.linux.$${SOPS_ARCH}" > /tmp/sops
-        chmod +x /tmp/sops
-
-        # Force the age key via environment variable (more reliable than the file)
-        export SOPS_AGE_KEY=$$(grep '^AGE-SECRET-KEY-' /run/secrets/age-key)
-
-        if [ -z "$$SOPS_AGE_KEY" ]; then
-          echo "ERROR: could not extract AGE-SECRET-KEY from /run/secrets/age-key" >&2
-          cat /run/secrets/age-key >&2
+        if [ -z "$$RENOVATE_TOKEN" ]; then
+          echo "ERROR: RENOVATE_TOKEN is empty after reading secret" >&2
+          echo "Secret content:" >&2
+          cat /run/secrets/renovate-token >&2
           exit 1
         fi
 
-        echo "Using age key starting with: $$(echo $$SOPS_AGE_KEY | cut -c1-30)..."
-
-        # Try decrypt
-        export RENOVATE_TOKEN=$$(/tmp/sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token 2>&1) || true
-
-        if [ -z "$$RENOVATE_TOKEN" ] || echo "$$RENOVATE_TOKEN" | grep -q "metadata not found\|Error\|error"; then
-          echo "ERROR: failed to decrypt" >&2
-          echo "----- sops output -----" >&2
-          /tmp/sops --decrypt --verbose /run/secrets/renovate-token >&2 || true
-          echo "----- file content (first 20 lines) -----" >&2
-          head -20 /run/secrets/renovate-token >&2
-          exit 1
-        fi
-
-        echo "Token decrypted successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
+        echo "Token loaded successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
         exec renovate "$$@"
 
+    labels:
+      cd.doco.job.enabled: "true"
+      cd.doco.job.schedule: "30 1 * * *"
+      cd.doco.job.execution_mode: "one_off"
+      cd.doco.job.skip_running: "true"
 
 secrets:
   renovate-token:
     file: ./renovate-token.sops.json
-  age-key:
-    # Reaches out to your primary, master private age key file on the local NAS filesystem path
-    file: /volume1/.config/age/keys.txt
+
