@@ -26,14 +26,26 @@ services:
       # This completely bypasses container file-ownership and multi-stage permissions blocks.
       - /usr/local/bin/sops:/usr/local/bin/sops:ro
 
-    entrypoint: 
+    entrypoint:
       - /bin/sh
       - -c
       - |
-        # Step 1: Use the host-forwarded, working SOPS binary to decrypt the token directly to memory
-        export RENOVATE_TOKEN=$$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
-        
-        # Step 2: Handoff process execution cleanly over to the main Renovate engine
+        set -e
+        export SOPS_AGE_KEY_FILE=/run/secrets/age-key
+
+        # Prefer dotenv-style if the file is .env-like
+        if head -c 50 /run/secrets/renovate-token | grep -q 'RENOVATE_TOKEN='; then
+          export RENOVATE_TOKEN=$(sops --decrypt --input-type dotenv --output-type dotenv /run/secrets/renovate-token | grep '^RENOVATE_TOKEN=' | cut -d= -f2-)
+        else
+          # JSON / YAML
+          export RENOVATE_TOKEN=$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
+        fi
+
+        if [ -z "$$RENOVATE_TOKEN" ]; then
+          echo "ERROR: failed to decrypt RENOVATE_TOKEN" >&2
+          exit 1
+        fi
+
         exec renovate "$$@"
 
     labels:
