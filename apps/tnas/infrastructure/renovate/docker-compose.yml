@@ -31,17 +31,40 @@ services:
       - -c
       - |
         set -e
-        # same download of static sops as above...
-        curl -sL ... -o /tmp/sops && chmod +x /tmp/sops
+
+        # Use wget if curl is missing (common in renovate image)
+        if command -v curl >/dev/null 2>&1; then
+          DL="curl -fsSL"
+        elif command -v wget >/dev/null 2>&1; then
+          DL="wget -qO-"
+        else
+          echo "ERROR: neither curl nor wget available" >&2
+          exit 1
+        fi
+
+        ARCH=$$(uname -m)
+        case $$ARCH in
+          x86_64)  SOPS_ARCH=amd64 ;;
+          aarch64|arm64) SOPS_ARCH=arm64 ;;
+          armv7l)  SOPS_ARCH=arm ;;
+          *) echo "Unsupported architecture: $$ARCH" >&2; exit 1 ;;
+        esac
+
+        echo "Downloading sops for $$SOPS_ARCH..."
+        $$DL "https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.$${SOPS_ARCH}" > /tmp/sops
+        chmod +x /tmp/sops
+
+        # Quick sanity check
+        if ! /tmp/sops --version >/dev/null 2>&1; then
+          echo "ERROR: downloaded sops binary is not executable or wrong architecture" >&2
+          file /tmp/sops || true
+          exit 1
+        fi
 
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
-        exec /tmp/sops exec-env /run/secrets/renovate-token renovate
 
-        labels:
-          cd.doco.job.enabled: "true"
-          cd.doco.job.schedule: "30 1 * * *"
-          cd.doco.job.execution_mode: "one_off"
-          cd.doco.job.skip_running: "true"
+        # Prefer exec-env (works best with dotenv files)
+        exec /tmp/sops exec-env /run/secrets/renovate-token renovate
 
 secrets:
   renovate-token:
