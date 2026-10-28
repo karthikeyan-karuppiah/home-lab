@@ -31,28 +31,17 @@ services:
       - -c
       - |
         set -e
+        # same download of static sops as above...
+        curl -sL ... -o /tmp/sops && chmod +x /tmp/sops
+
         export SOPS_AGE_KEY_FILE=/run/secrets/age-key
+        exec /tmp/sops exec-env /run/secrets/renovate-token renovate
 
-        # Prefer dotenv-style if the file is .env-like
-        if head -c 50 /run/secrets/renovate-token | grep -q 'RENOVATE_TOKEN='; then
-          export RENOVATE_TOKEN=$(sops --decrypt --input-type dotenv --output-type dotenv /run/secrets/renovate-token | grep '^RENOVATE_TOKEN=' | cut -d= -f2-)
-        else
-          # JSON / YAML
-          export RENOVATE_TOKEN=$(sops --decrypt --extract '["RENOVATE_TOKEN"]' /run/secrets/renovate-token)
-        fi
-
-        if [ -z "$$RENOVATE_TOKEN" ]; then
-          echo "ERROR: failed to decrypt RENOVATE_TOKEN" >&2
-          exit 1
-        fi
-
-        exec renovate "$$@"
-
-    labels:
-      cd.doco.job.enabled: "true"
-      cd.doco.job.schedule: "30 1 * * *"
-      cd.doco.job.execution_mode: "one_off"
-      cd.doco.job.skip_running: "true"
+        labels:
+          cd.doco.job.enabled: "true"
+          cd.doco.job.schedule: "30 1 * * *"
+          cd.doco.job.execution_mode: "one_off"
+          cd.doco.job.skip_running: "true"
 
 secrets:
   renovate-token:
