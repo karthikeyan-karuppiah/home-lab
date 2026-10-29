@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.0...v1.1.1) (2026-10-29)
+
+
+### Miscellaneous Chores
+
+* implement native bash conventional commit message git hooks ([178a478](https://github.com/karthikeyan-karuppiah/home-lab/commit/178a4785a9a29afac3b2c8be79003e69b0b4c0e3))
+
 ## [1.1.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.0.0...v1.1.0) (2026-10-29)
 
 
