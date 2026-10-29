@@ -20,4 +20,3 @@ services:
       # Enforce a semantic version template regex that handles the 'v' prefix if Doco-CD allows it
       # This matches the 'v' prefixed versioning used by the developers
       - "cd.doco.image.policy=v0.30.0"
-
