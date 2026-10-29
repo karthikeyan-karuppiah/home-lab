@@ -4,7 +4,7 @@ services:
   blocky:
     # Explicitly append the 'v' prefix required by spx01/blocky
     # Change the registry path from spx01/blocky to ghcr.io/0xerr0r/blocky
-    image: ghcr.io/0xerr0r/blocky:v0.30.0
+    image: ghcr.io/0xerr0r/blocky:v0.35.0
     container_name: blocky
     restart: unless-stopped
     ports:
