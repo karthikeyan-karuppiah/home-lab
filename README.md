@@ -1,6 +1,9 @@
 # Home Infrastructure Lab
 
-[![Renovate](https://shields.io)](https://github.com)
+[![Continuous Integration](https://shields.io)](https://github.com/workflows/ci.yml)
+[![Release Management](https://shields.io)](https://github.com)
+[![PR Title Linter](https://shields.io)](https://github.com)
+[![Renovate](https://shields.io)](https://renovatebot.com)
 
 A declarative, GitOps-driven infrastructure monorepo for managing private network utilities, secure edge ingress, and media orchestration services deployed on an **Intel-powered TerraMaster F4-424 Pro** NAS cluster.
 
@@ -17,6 +20,48 @@ This repository implements an infrastructure-as-code (IaC) methodology to enforc
 
 ---
 
+## 🚀 CI/CD Infrastructure & Automation Engineering
+
+This monorepo utilizes an advanced, decoupled multi-stage execution pipeline built under strict zero-trust parameters to guarantee supply chain integrity before host cluster synchronization.
+
+```text
+  [ Pull Request Opened ]
+             │
+             ├──► (Pipeline 3) PR Title Linter  ──► Checks Semantic Compliance
+             └──► (Pipeline 1) CI Engine        ──► Static Scans, Linters & Trivy
+                                       │
+                              [ Merge to main ]
+                                       │
+                                       ▼
+                         (Pipeline 1) CI Success Gate
+                                       │
+                        (Artifact Transit Upload)
+                                       │
+                                       ▼
+                     (Pipeline 2) Release Management (CD)
+                                       │
+                                       ▼
+                       Google Release Please Automation
+```
+
+### 📋 Automated Pipeline Directory
+
+#### 1. Continuous Integration (`.github/workflows/ci.yml`)
+Runs asynchronously on all target pushes and active pull requests to fail-fast on bad configuration patterns.
+* **Security & Vulnerability Auditing**: Implements **Gitleaks** to catch credential spills and **Aqua Security Trivy** to parse IaC structural errors.
+* **Static Code Analysis**: Employs **Hadolint** for Dockerfile syntactic validation and **Yamllint** for infrastructure specification maps.
+* **Cross-Boundary Data Transit**: Packages verified metadata into a secure short-retention GitHub build artifact on successful runs.
+
+#### 2. Release Management (`.github/workflows/release.yml`)
+An event-driven CD pipeline configured to trigger cleanly via `workflow_run` only when the primary CI pipeline ends successfully on the `main` branch.
+* **State Verification**: Pulls and verifies the data integrity of the compiled metadata package generated upstream.
+* **Semantic Engine**: Executes **Google Release Please** to parse semantic version patterns, compile automated changelogs, and cut production GitHub releases.
+
+#### 3. PR Title Linter (`.github/workflows/pr-lint.yml`)
+An isolated workflow evaluating branch metadata to enforce **Conventional Commits** (`feat:`, `fix:`, `chore:`). This prevents unparseable merge commits from polluting historical lines or crashing the downstream release generator.
+
+---
+
 ## 🛠️ Service Catalog & Specifications
 
 ### 🔐 Edge Ingress & Routing
@@ -24,12 +69,12 @@ This repository implements an infrastructure-as-code (IaC) methodology to enforc
 #### 1. WireGuard VPN (`/wg-easy`)
 Provides high-performance, cryptographic remote entry paths into the lab network using a fast Split-Tunnel layout.
 * **Dynamic Endpoint Routing**: Enforced via **DuckDNS** (`carthytnas.duckdns.org`) to maintain connection states across dynamic ISP public IP rotations.
-* **Image Registry**: `ghcr.io/wg-easy/wg-easy:v14` <!-- renovate: datasource=docker depName=ghcr.io/wg-easy/wg-easy -->
+* **Image Registry**: `ghcr.io/wg-easy/wg-easy:v15`
 
 #### 2. Nginx Proxy Manager (`/nginx-proxy-manager`)
 Acts as the central reverse proxy and application layer router to handle hostname evaluation and decouple port configurations.
 * **Capability**: Exposes clean internal proxy channels and manages upstream data flows.
-* **Image Registry**: `jc21/nginx-proxy-manager:2.11` <!-- renovate: datasource=docker depName=jc21/nginx-proxy-manager -->
+* **Image Registry**: `jc21/nginx-proxy-manager:2.11`
 
 ### 🗺️ Network & Media Core
 
@@ -37,12 +82,12 @@ Acts as the central reverse proxy and application layer router to handle hostnam
 An ultra-lightweight local DNS proxy and network-wide sinkhole designed for local domain mapping and privacy hardening.
 * **Upstream Delivery**: DNS-over-HTTPS (DoH) utilizing secure endpoints via Quad9 (`dns.quad9.net`) and Cloudflare.
 * **Telemetry Protection**: Intercepts tracking and advertisement scripts at the name-resolution stage.
-* **Image Registry**: `ghcr.io/0xerr0r/blocky:v0.24` <!-- renovate: datasource=docker depName=ghcr.io/0xerr0r/blocky -->
+* **Image Registry**: `ghcr.io/0xerr0r/blocky:v0.35`
 
 #### 4. Navidrome (`/navidrome`)
 A streaming server subsystem compliant with Subsonic/Madsonic API specifications to host private media assets.
 * **Capability**: Multithreaded library indexing, metadata extraction, and streaming abstraction.
-* **Image Registry**: `deluan/navidrome:0.53` <!-- renovate: datasource=docker depName=deluan/navidrome -->
+* **Image Registry**: `deluan/navidrome:0.53`
 
 ---
 
