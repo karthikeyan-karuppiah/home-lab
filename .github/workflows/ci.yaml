@@ -80,6 +80,49 @@ jobs:
           persist-credentials: false
 
       # -----------------------------------------------------------------------
+      # Compliance Gate: Conventional Commit Message Validation
+      # -----------------------------------------------------------------------
+      # Validates headers immediately after checking out code to enforce fail-fast standards.
+      - name: Validate Commit Message Format
+        run: |
+          set -euo pipefail
+          echo "=== Verifying Commit Message Compliance ==="
+
+          # Handle pull request events vs direct branch push events gracefully
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            commit_msg="${{ github.event.pull_request.title }}"
+          else
+            commit_msg="${{ github.event.head_commit.message }}"
+          fi
+
+          # Clean up any multi-line commit descriptions to test just the first line
+          commit_header=$(echo "$commit_msg" | head -n 1)
+
+          # Explicitly permits every type listed in your release-please configuration
+          conventional_commit_regex="^(feat|fix|perf|revert|docs|style|chore|refactor|test|build|ci)(\([a-zA-Z0-9_-]+\))?!?: .+"
+
+          # Skip validation for automated merge commits or release-please tags
+          if [[ "$commit_header" =~ ^Merge.* || "$commit_header" =~ ^chore\(release\):.* ]]; then
+              echo "✅ Skipping automated or merge commit strategy context."
+              exit 0
+          fi
+
+          # Validate layout structure format
+          if [[ ! "$commit_header" =~ $conventional_commit_regex ]]; then
+              echo -e "\033[1;31m❌ ERROR: Invalid Commit Message Format!\033[0m"
+              echo "Your header: \"$commit_header\""
+              echo ""
+              echo "Your commit message must follow the Conventional Commits specification."
+              echo "Example: feat: add automated backup script"
+              echo "Example: chore(docker): update container port bindings"
+              echo ""
+              echo "Allowed prefixes match your release-please config:"
+              echo "  feat, fix, perf, revert, docs, style, chore, refactor, test, build, ci"
+              exit 1
+          fi
+          echo "✅ Commit message matches conventional specification."
+
+      # -----------------------------------------------------------------------
       # Performance Optimization: Caching Layers
       # -----------------------------------------------------------------------
       # Avoids pulling structural databases from the open web during every single run.
@@ -168,22 +211,3 @@ jobs:
           # Prevents builds stopping for exploits that don't have patch solutions yet
           ignore-unfixed: true
 
-      # -----------------------------------------------------------------------
-      #  Build Data Passing Setup
-      # -----------------------------------------------------------------------
-      # Simulate generating a safe deployment configuration or manifest build payload.
-      - name: Generate Build Payload
-        run: |
-          mkdir -p build-dist
-          echo "build_id=${{ github.run_id }}" > build-dist/metadata.txt
-          echo "sha=${{ github.sha }}" >> build-dist/metadata.txt
-
-      # This securely archives the payload into GitHub's internal runner storage
-      # so that the separate Release pipeline can discover and download it later.
-      - name: Securely Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-payload
-          path: build-dist/
-          # Short retention to prevent storage pollution and security decay
-          retention-days: 1
