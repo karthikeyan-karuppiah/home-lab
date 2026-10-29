@@ -1,0 +1,74 @@
+# =============================================================================
+# Pipeline 3: Pull Request Quality Control - Conventional Commit Linting
+# =============================================================================
+# Core Architecture & Security Model:
+#   1. Zero-Trust Security Strategy: Disables root tokens and isolates tasks.
+#   2. Enterprise Fast-Fail: Validates entry criteria before jobs hit the base branch.
+# =============================================================================
+
+name: "PR Title Linter"
+
+# -----------------------------------------------------------------------------
+# Event Triggers (Webhook Configuration)
+# -----------------------------------------------------------------------------
+on:
+  pull_request:
+    # Google Standard: Evaluates whenever metadata shifts.
+    # Runs completely independently of main branch code compilations or deployment pushes.
+    types:
+      - opened
+      - edited
+      - synchronize
+
+# -----------------------------------------------------------------------------
+# Zero-Trust Global Permissions Matrix
+# -----------------------------------------------------------------------------
+# Google Standard: Principal of Least Privilege.
+# Explicitly revokes all default token permissions globally.
+# Each standalone job must request its own granular scopes down below.
+permissions: {}
+
+jobs:
+  # ===========================================================================
+  # Job: Validate Pull Request Text Layout
+  # ===========================================================================
+  validate-title:
+    name: Validate Conventional Commit Format
+    runs-on: ubuntu-latest
+    # Lightweight execution boundary constraint
+    timeout-minutes: 5
+
+    permissions:
+      # Explicit minimum read permission required to scrape the PR title text metadata
+      pull-requests: read
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Verification Run: Semantic Compliance Verification
+      # -----------------------------------------------------------------------
+      # Uses a verified, stable release tag to process compliance.
+      # This action compares the raw PR title string against the standard expression:
+      # <type>(<optional scope>): <description> (e.g., "feat(deps): update app config")
+      - name: Lint PR Title Structure
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configuration Profiles: Define exactly which prefixes are permitted.
+          # These directly map to what your Release Please engine expects.
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            perf
+            test
+            ci
+            build
+          # Enforces strict structure checking. Will cause an immediate failure if
+          # someone forgets the space after the colon or enters an un-parsable string.
+          requireScope: false
+          # Rejects subjects that start with a capital letter (linting best practice)
+          subjectPattern: ^(?![A-Z]).+$
