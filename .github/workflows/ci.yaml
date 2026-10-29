@@ -1,0 +1,182 @@
+# =============================================================================
+# Pipeline 1: Continuous Integration (CI) - Linting & Security Scans
+# =============================================================================
+# Core Architecture & Security Model:
+#   1. Zero-Trust Security Strategy: Disables root tokens and isolates tasks.
+#   2. SLSA Compliance: Standardizes supply-chain security via immutable SHA-1 hashes.
+#   3. Secure Artifact Transit: Packages artifacts safely for downstream execution.
+# =============================================================================
+
+name: Continuous Integration
+
+# -----------------------------------------------------------------------------
+# Event Triggers (Webhook Configuration)
+# -----------------------------------------------------------------------------
+on:
+  push:
+    branches: [main]
+    #  Prevent wasted runner billable minutes.
+    # Documentation or configuration-only changes should not spin up infrastructure.
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+
+# -----------------------------------------------------------------------------
+# Concurrency Management (Anti-Race Condition Logic)
+# -----------------------------------------------------------------------------
+concurrency:
+  #  Isolates execution contexts cleanly.
+  # If a developer pushes a new commit to an active PR, the old running job 
+  # is safely terminated, preserving compute costs. Using the PR number ensures
+  # separate PRs do not conflict with or cancel each other out.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# -----------------------------------------------------------------------------
+# Zero-Trust Global Permissions Matrix
+# -----------------------------------------------------------------------------
+#  Principal of Least Privilege. 
+# Explicitly revokes all default token permissions globally. 
+# Each standalone job must request its own granular scopes down below.
+permissions: {}
+
+jobs:
+  # ===========================================================================
+  # Job: Static Analysis, Infrastructure, & Security Scans
+  # ===========================================================================
+  lint-and-scan:
+    name: Lint & Security Scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 10 # Hard constraint to break out of hanging or frozen test tasks
+
+    # Scoped permissions specifically for security evaluations and scanning
+    permissions:
+      contents: read       # Required to pull and read codebase context
+      pull-requests: read  # Required to contextualize PR workflows
+      security-events: write # Enables uploading vulnerabilities directly to GitHub Security dashboard
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Source Code Lifecycle
+      # -----------------------------------------------------------------------
+      #  Uses pinning to a specific SHA-1 commit hash instead of a mutable tag (@v4).
+      # This mitigates supply-chain threats (e.g., tag hijacking).
+      # 'persist-credentials: false' keeps the local .git token secure from local scripts.
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # Fetches entire history, required for accurate commit scans (Gitleaks)
+          persist-credentials: false
+
+      # -----------------------------------------------------------------------
+      # Performance Optimization: Caching Layers
+      # -----------------------------------------------------------------------
+      # Avoids pulling structural databases from the open web during every single run.
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@d4323d4df104b026a6e56904ae51e81dcf917ff0 # v4.2.2
+        with:
+          path: ~/.cache/trivy
+          # Dynamic key maps to changes inside files containing "compose" or "Dockerfile"
+          key: ${{ runner.os }}-trivy-${{ hashFiles('**/*compose*.yml', '**/Dockerfile*') }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-
+
+      # -----------------------------------------------------------------------
+      # Linter Execution: YAML Analysis
+      # -----------------------------------------------------------------------
+      - name: Lint YAML files
+        uses: ibiqlik/action-yamllint@2576378a8e33da749f0573966020524ba16cb5e2 # v3.1.1
+        with:
+          config_data: |
+            extends: default
+            rules:
+              line-length: disable
+              document-start: disable
+
+      # -----------------------------------------------------------------------
+      # Runtime Evaluation: Docker Compose Syntax Verification
+      # -----------------------------------------------------------------------
+      #  Uses Shell Process Substitution instead of basic piping.
+      # Basic piping runs steps in an isolated background subshell, causing errors or 
+      # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
+      - name: Validate Docker Compose files
+        run: |
+          set -euo pipefail
+          IFS=$'\n'
+          while read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "→ Validating execution profile: $file"
+              docker compose -f "$file" config --quiet
+            fi
+          done < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \))
+
+      # -----------------------------------------------------------------------
+      # Conditional Steps: Dockerfile Validation
+      # -----------------------------------------------------------------------
+      # Evaluates the repository layout first to see if any custom images exist.
+      - name: Check for Dockerfiles
+        id: dockerfiles
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name "Dockerfile" -o -name "*.dockerfile" -o -name "Dockerfile.*" \) | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Runs the enterprise-standard Hadolint analyzer if Dockerfiles exist.
+      - name: Lint Dockerfiles with Hadolint
+        if: steps.dockerfiles.outputs.found == 'true'
+        uses: hadolint/hadolint-action@543e0168f61aa31aa77899479b1d75c96041680d # v3.1.0
+        with:
+          failure-threshold: warning
+          recursive: true
+
+      # -----------------------------------------------------------------------
+      # Threat Management: Secret Scanning (Gitleaks)
+      # -----------------------------------------------------------------------
+      # Evaluates all raw commits to confirm credentials or access keys weren't accidentally added.
+      - name: Scan for leaked secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@f699ab5da806ef8b9c488334407b824056285497 # v2.3.7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # Vulnerability Assessment: Infrastructure Configs (Trivy)
+      # -----------------------------------------------------------------------
+      # Scans underlying files for bad architectural practices (e.g., running as root).
+      - name: Scan infrastructure files for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@18f259c25e9a010d807b45777bd1418d7b5f635c # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH # Only force build errors on serious exposures
+          exit-code: "1"          # Maps a true failure to the exit engine code
+          ignore-unfixed: true    # Prevents builds stopping for exploits that don't have patch solutions yet
+
+      # -----------------------------------------------------------------------
+      #  Build Data Passing Setup
+      # -----------------------------------------------------------------------
+      # Simulate generating a safe deployment configuration or manifest build payload.
+      - name: Generate Build Payload
+        run: |
+          mkdir -p build-dist
+          echo "build_id=${{ github.run_id }}" > build-dist/metadata.txt
+          echo "sha=${{ github.sha }}" >> build-dist/metadata.txt
+
+      # Security: Use a pinned upload action.
+      # This securely archives the payload into GitHub's internal runner storage
+      # so that the separate Release pipeline can discover and download it later.
+      - name: Securely Upload Build Artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea23f60bcc4653b6d2e92c729 # v4.4.3
+        with:
+          name: deployment-payload
+          path: build-dist/
+          retention-days: 1 # Short retention to prevent storage pollution and security decay
