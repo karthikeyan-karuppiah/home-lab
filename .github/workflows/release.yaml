@@ -76,8 +76,9 @@ jobs:
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # Suitable for universal mono-repos and simple software architectures
-          release-type: simple
+          # Points to the configuration files you already have set up
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
       # -----------------------------------------------------------------------
       # Output Logging and Reporting
