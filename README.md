@@ -16,7 +16,7 @@ This repository implements an infrastructure-as-code (IaC) methodology to enforc
 * **Continuous Delivery**: Handled natively by **Doco-CD**, acting as an on-premise GitOps controller that continuously reconciles state updates from the `main` branch.
 * **Network Hardening**: Exposes a single cryptographic edge ingress point via WireGuard. All underlying infrastructure portals, databases, and application UIs are completely insulated from the public web.
 
-🔎 For a comprehensive packet journey mapping, see the [Network Traffic & Routing Deep-Dive](NETWORK_FLOW.md).
+🔎 For a comprehensive packet journey mapping and security breakdown, see the [System Architecture Document](ARCHITECTURE.md).
 
 ---
 
