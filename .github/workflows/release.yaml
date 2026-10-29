@@ -47,12 +47,12 @@ jobs:
 
     steps:
       # -----------------------------------------------------------------------
-      # Cross-Pipeline Download Resolution
+      # Google Standard: Cross-Pipeline Download Resolution
       # -----------------------------------------------------------------------
       # Because workflow_run evaluates independently, we must explicitly request the
       # artifact tied to the exact triggering run event (`github.event.workflow_run.id`).
       - name: Download Artifact from Triggering Pipeline
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@v4
         with:
           name: deployment-payload
           # Identifies the unique execution ID from Pipeline 1 that fired this event loop
@@ -71,7 +71,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Parses Conventional Commits (e.g., feat:, fix:) to automatically increment versions.
       - name: Run Release Please
-        uses: googleapis/release-please-action@701de7de0ca25e24cb1c360980cfb1e4c7ba3384 # v4.1.3
+        uses: googleapis/release-please-action@v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -80,7 +80,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Output Logging and Reporting
       # -----------------------------------------------------------------------
-      # Uses brace encapsulation and standard file writers ('>>')
+      # Google Standard: Uses brace encapsulation and standard file writers ('>>')
       # to prevent dangerous script-injection opportunities within echo contexts.
       - name: Post-release summary
         if: ${{ steps.release.outputs.release_created }}
