@@ -85,10 +85,20 @@ jobs:
       # -----------------------------------------------------------------------
       # 3. Dockerfile best practices (Hadolint)
       # -----------------------------------------------------------------------
+      - name: Check for Dockerfiles
+        id: dockerfiles
+        run: |
+          if find . -type f \( -name "Dockerfile" -o -name "*.dockerfile" -o -name "Dockerfile.*" \) | grep -q .; then
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No Dockerfiles found – skipping Hadolint"
+          fi
+
       - name: Lint Dockerfiles with Hadolint
+        if: steps.dockerfiles.outputs.found == 'true'
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          # Fail only on errors, show warnings
           failure-threshold: warning
           recursive: true
 
