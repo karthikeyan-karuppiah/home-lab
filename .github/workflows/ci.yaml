@@ -33,7 +33,7 @@ on:
 # -----------------------------------------------------------------------------
 concurrency:
   #  Isolates execution contexts cleanly.
-  # If a developer pushes a new commit to an active PR, the old running job 
+  # If a developer pushes a new commit to an active PR, the old running job
   # is safely terminated, preserving compute costs. Using the PR number ensures
   # separate PRs do not conflict with or cancel each other out.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -42,8 +42,8 @@ concurrency:
 # -----------------------------------------------------------------------------
 # Zero-Trust Global Permissions Matrix
 # -----------------------------------------------------------------------------
-#  Principal of Least Privilege. 
-# Explicitly revokes all default token permissions globally. 
+#  Principal of Least Privilege.
+# Explicitly revokes all default token permissions globally.
 # Each standalone job must request its own granular scopes down below.
 permissions: {}
 
@@ -54,13 +54,17 @@ jobs:
   lint-and-scan:
     name: Lint & Security Scans
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # Hard constraint to break out of hanging or frozen test tasks
+    # Hard constraint to break out of hanging or frozen test tasks
+    timeout-minutes: 10
 
     # Scoped permissions specifically for security evaluations and scanning
     permissions:
-      contents: read       # Required to pull and read codebase context
-      pull-requests: read  # Required to contextualize PR workflows
-      security-events: write # Enables uploading vulnerabilities directly to GitHub Security dashboard
+      # Required to pull and read codebase context
+      contents: read
+      # Required to contextualize PR workflows
+      pull-requests: read
+      # Enables uploading vulnerabilities directly to GitHub Security dashboard
+      security-events: write
 
     steps:
       # -----------------------------------------------------------------------
@@ -71,7 +75,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches entire history, required for accurate commit scans (Gitleaks)
+          # Fetches entire history, required for accurate commit scans (Gitleaks)
+          fetch-depth: 0
           persist-credentials: false
 
       # -----------------------------------------------------------------------
@@ -103,7 +108,7 @@ jobs:
       # Runtime Evaluation: Docker Compose Syntax Verification
       # -----------------------------------------------------------------------
       #  Uses Shell Process Substitution instead of basic piping.
-      # Basic piping runs steps in an isolated background subshell, causing errors or 
+      # Basic piping runs steps in an isolated background subshell, causing errors or
       # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
       - name: Validate Docker Compose files
         run: |
@@ -156,9 +161,12 @@ jobs:
         with:
           scan-type: config
           scan-ref: .
-          severity: CRITICAL,HIGH # Only force build errors on serious exposures
-          exit-code: "1"          # Maps a true failure to the exit engine code
-          ignore-unfixed: true    # Prevents builds stopping for exploits that don't have patch solutions yet
+          # Only force build errors on serious exposures
+          severity: CRITICAL,HIGH
+          # Maps a true failure to the exit engine code
+          exit-code: "1"
+          # Prevents builds stopping for exploits that don't have patch solutions yet
+          ignore-unfixed: true
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
@@ -177,4 +185,5 @@ jobs:
         with:
           name: deployment-payload
           path: build-dist/
-          retention-days: 1 # Short retention to prevent storage pollution and security decay
+          # Short retention to prevent storage pollution and security decay
+          retention-days: 1
