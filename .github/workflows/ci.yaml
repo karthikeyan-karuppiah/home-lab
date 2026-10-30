@@ -210,3 +210,21 @@ jobs:
           exit-code: "1"
           # Prevents builds stopping for exploits that don't have patch solutions yet
           ignore-unfixed: true
+      # -----------------------------------------------------------------------
+      #  Build Data Passing Setup
+      # -----------------------------------------------------------------------
+      # Generates a safe deployment configuration manifest build payload.
+      - name: Generate Build Payload
+        run: |
+          set -euo pipefail
+          mkdir -p build-dist
+          echo "build_id=${{ github.run_id }}" > build-dist/metadata.txt
+          echo "sha=${{ github.sha }}" >> build-dist/metadata.txt
+
+      # Downstream Delivery: Securely upload the payload for Pipeline 2
+      - name: Upload Deployment Payload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-payload
+          path: build-dist/
+          retention-days: 1
