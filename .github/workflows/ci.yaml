@@ -200,7 +200,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Scans underlying files for bad architectural practices (e.g., running as root).
       - name: Scan infrastructure files for vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@v0.38.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           # Points directly to your app deployments folder
@@ -211,6 +211,10 @@ jobs:
           exit-code: "1"
           # Prevents builds stopping for exploits that don't have patch solutions yet
           ignore-unfixed: true
+          # highlight-start
+          # Forces the underlying runner instance to pull the updated v0.76.1 engine binary
+          version: v0.76.1
+          # highlight-end
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
       # -----------------------------------------------------------------------
