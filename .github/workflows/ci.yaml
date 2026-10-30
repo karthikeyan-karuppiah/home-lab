@@ -202,9 +202,10 @@ jobs:
       - name: Scan infrastructure files for vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: config
+          scan-type: 'fs'
           # Points directly to your app deployments folder
           scan-ref: 'apps/tnas'
+          scanners: 'config'
           # Only force build errors on serious exposures
           severity: CRITICAL,HIGH
           # Maps a true failure to the exit engine code
