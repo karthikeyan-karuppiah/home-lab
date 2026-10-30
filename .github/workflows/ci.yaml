@@ -210,10 +210,11 @@ jobs:
           ignore-unfixed: true
           version: 'v0.76.1'
           # highlight-start
-          # Bypasses wrapper bugs by injecting the configuration direct to the engine execution line
-          args: --include-dirs apps/tnas
+          # Standardizes configuration parsing via a robust inline JSON string
+          trivy-config: '{"misconfig": {"include-dirs": ["apps/tnas"]}}'
+          # Prevents Trivy from skipping hidden root layout folders that block discovery
+          skip-dirs: ''
           # highlight-end
-
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
