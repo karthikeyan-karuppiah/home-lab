@@ -205,7 +205,6 @@ jobs:
         with:
           version: v0.76.1
           cache: true
-
       - name: Scan infrastructure for misconfigurations & secrets (Trivy)
         run: |
           set -euo pipefail
@@ -214,29 +213,33 @@ jobs:
           echo
 
           # ------------------------------------------------------------------
-          # Debug: show what compose files exist
+          # Debug: show compose files
           # ------------------------------------------------------------------
           echo "→ Looking for Docker Compose files..."
-          COMPOSE_FILES=$(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
+          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
 
-          if [ -z "$COMPOSE_FILES" ]; then
-            echo "⚠ No docker-compose.yml / compose.yml files found"
+          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
+            echo "⚠ No Docker Compose files found"
           else
-            COUNT=$(echo "$COMPOSE_FILES" | wc -l)
-            echo "✅ Found $COUNT Docker Compose file(s):"
-            echo "$COMPOSE_FILES" | sed 's/^/   - /'
+            echo "✅ Found ${#COMPOSE_FILES[@]} Docker Compose file(s):"
+            printf '   - %s\n' "${COMPOSE_FILES[@]}"
           fi
           echo
 
           # ------------------------------------------------------------------
-          # 1. Misconfiguration scan
+          # 1. Misconfiguration scan – scan each compose file explicitly
           # ------------------------------------------------------------------
-          echo "→ Running misconfiguration scan..."
-          trivy config \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            --format table \
-            . || MISCONFIG_FAILED=true
+          echo "→ Running misconfiguration scan on each compose file..."
+          MISCONFIG_FAILED=false
+
+          for file in "${COMPOSE_FILES[@]}"; do
+            echo "   Scanning: $file"
+            trivy config \
+              --severity CRITICAL,HIGH \
+              --exit-code 1 \
+              --format table \
+              "$file" || MISCONFIG_FAILED=true
+          done
 
           echo
           # ------------------------------------------------------------------
@@ -255,7 +258,7 @@ jobs:
           # ------------------------------------------------------------------
           # Final result
           # ------------------------------------------------------------------
-          if [ "${MISCONFIG_FAILED:-false}" = true ] || [ "${SECRET_FAILED:-false}" = true ]; then
+          if [ "$MISCONFIG_FAILED" = true ] || [ "${SECRET_FAILED:-false}" = true ]; then
             echo "❌ Trivy found issues (see above)"
             exit 1
           else
