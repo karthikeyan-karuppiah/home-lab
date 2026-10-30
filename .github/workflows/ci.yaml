@@ -200,19 +200,45 @@ jobs:
       # -----------------------------------------------------------------------
       # Scans underlying files for bad architectural practices (e.g., running as root).
       # highlight-start
-      - name: Install Trivy Security Engine Globally
+      - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.6
         with:
           version: v0.76.1
+          cache: true
 
-      - name: Scan infrastructure files for vulnerabilities (Trivy)
+      - name: Scan infrastructure for misconfigurations & secrets (Trivy)
         run: |
-          trivy fs \
-            --scanners misconfig \
+          set -euo pipefail
+          echo "=== Trivy Config + Secret Scan ==="
+          echo "Target: apps/tnas/"
+          echo
+
+          # 1. Misconfiguration scan (Docker Compose, K8s, etc.)
+          echo "→ Running misconfiguration scan..."
+          trivy config \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
-            apps/tnas/
-      # highlight-end
+            --format table \
+            apps/tnas/ || MISCONFIG_FAILED=true
+
+          echo
+          # 2. Secret scan (looks for tokens, keys, passwords in the code)
+          echo "→ Running secret scan..."
+          trivy fs \
+            --scanners secret \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --format table \
+            apps/tnas/ || SECRET_FAILED=true
+
+          echo
+          # Final summary
+          if [ "${MISCONFIG_FAILED:-false}" = true ] || [ "${SECRET_FAILED:-false}" = true ]; then
+            echo "❌ Trivy found issues (see above)"
+            exit 1
+          else
+            echo "✅ No critical/high misconfigurations or secrets found"
+          fi
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
