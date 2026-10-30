@@ -205,11 +205,12 @@ jobs:
         with:
           version: v0.76.1
           cache: true
-      - name: Scan infrastructure for misconfigurations & secrets (Trivy)
+
+      - name: Scan infrastructure for misconfigurations, secrets & images (Trivy)
         run: |
           set -euo pipefail
 
-          echo "=== Trivy Config + Secret Scan ==="
+          echo "=== Trivy Config, Secret & Image Scan ==="
           echo
 
           # ------------------------------------------------------------------
@@ -226,24 +227,53 @@ jobs:
           fi
           echo
 
+          # Flag trackers
+          MISCONFIG_FAILED=false
+          IMAGE_FAILED=false
+          SECRET_FAILED=false
+
           # ------------------------------------------------------------------
-          # 1. Misconfiguration scan – scan each compose file explicitly
+          # 1. Misconfiguration scan – scan each compose file explicitly via filesystem engine
           # ------------------------------------------------------------------
           echo "→ Running misconfiguration scan on each compose file..."
-          MISCONFIG_FAILED=false
-
           for file in "${COMPOSE_FILES[@]}"; do
-            echo "   Scanning: $file"
-            trivy config \
+            echo "   Scanning config: $file"
+            # Using 'trivy fs' with misconfig scanner directly reads individual sub-path targets flawlessly
+            trivy fs \
+              --scanners misconfig \
               --severity CRITICAL,HIGH \
               --exit-code 1 \
               --format table \
               "$file" || MISCONFIG_FAILED=true
           done
-
           echo
+
           # ------------------------------------------------------------------
-          # 2. Secret scan
+          # 2. Image scan – dynamically extract and scan compose images
+          # ------------------------------------------------------------------
+          echo "→ Extracting and scanning images referenced in compose files..."
+          if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
+            # Safely grab unique image tags across all discovered compose files
+            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | awk '{print $2}' | tr -d '"' | tr -d "'" | sort -u)
+
+            if [ ${#IMAGES[@]} -eq 0 ]; then
+              echo "   ⚠ No images found inside compose files."
+            else
+              echo "   ✅ Found ${#IMAGES[@]} unique image(s) to scan."
+              for img in "${IMAGES[@]}"; do
+                echo "   Scanning image layer: $img"
+                trivy image \
+                  --severity CRITICAL,HIGH \
+                  --exit-code 1 \
+                  --format table \
+                  "$img" || IMAGE_FAILED=true
+              done
+            fi
+          fi
+          echo
+
+          # ------------------------------------------------------------------
+          # 3. Secret scan
           # ------------------------------------------------------------------
           echo "→ Running secret scan..."
           trivy fs \
@@ -253,16 +283,16 @@ jobs:
             --format table \
             --skip-dirs .git \
             . || SECRET_FAILED=true
-
           echo
+
           # ------------------------------------------------------------------
           # Final result
           # ------------------------------------------------------------------
-          if [ "$MISCONFIG_FAILED" = true ] || [ "${SECRET_FAILED:-false}" = true ]; then
-            echo "❌ Trivy found issues (see above)"
+          if [ "$MISCONFIG_FAILED" = true ] || [ "$IMAGE_FAILED" = true ] || [ "$SECRET_FAILED" = true ]; then
+            echo "❌ Trivy found issues (see logs above)"
             exit 1
           else
-            echo "✅ No critical/high misconfigurations or secrets found"
+            echo "✅ No critical/high misconfigurations, image vulnerabilities, or secrets found"
           fi
 
       # -----------------------------------------------------------------------
