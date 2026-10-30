@@ -210,4 +210,3 @@ jobs:
           exit-code: "1"
           # Prevents builds stopping for exploits that don't have patch solutions yet
           ignore-unfixed: true
-

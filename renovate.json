@@ -19,7 +19,8 @@
   ],
   "packageRules": [
     {
-      "matchFiles": [
+      // Fixed: Changed from 'matchFiles' to the valid schema property 'matchFileNames'
+      "matchFileNames": [
         "README.md"
       ],
       "groupName": "Documentation Image Updates",
