@@ -203,19 +203,20 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
-          # Points directly to your app deployments folder
-          scan-ref: 'apps/tnas'
-          scanners: 'config'
-          # Only force build errors on serious exposures
-          severity: CRITICAL,HIGH
-          # Maps a true failure to the exit engine code
-          exit-code: "1"
-          # Prevents builds stopping for exploits that don't have patch solutions yet
-          ignore-unfixed: true
           # highlight-start
-          # Forces the underlying runner instance to pull the updated v0.76.1 engine binary
-          version: v0.76.1
+          scan-ref: '.' # Keep the scanner reference at the root workspace directory
+          # Explicitly pass the modern scanner flag to clear the deprecation warning
+          scanners: 'misconfig'
+          trivy-config: |
+            # Explicitly force the engine to look inside your infrastructure directory
+            include-dirs:
+              - "apps/tnas"
           # highlight-end
+          severity: 'CRITICAL,HIGH'
+          exit-code: "1"
+          ignore-unfixed: true
+          version: 'v0.76.1'
+
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
       # -----------------------------------------------------------------------
