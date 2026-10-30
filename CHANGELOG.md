@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.1...v1.1.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* correct matchFileNames schema property error inside renovate config ([5a714f8](https://github.com/karthikeyan-karuppiah/home-lab/commit/5a714f8c6a76e08fe1c96b429dd3574de47deea6))
+
 ## [1.1.1](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.0...v1.1.1) (2026-10-29)
 
 
