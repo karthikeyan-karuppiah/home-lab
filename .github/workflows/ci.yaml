@@ -209,30 +209,52 @@ jobs:
       - name: Scan infrastructure for misconfigurations & secrets (Trivy)
         run: |
           set -euo pipefail
+
           echo "=== Trivy Config + Secret Scan ==="
-          echo "Target: apps/tnas/"
           echo
 
-          # 1. Misconfiguration scan (Docker Compose, K8s, etc.)
+          # ------------------------------------------------------------------
+          # Debug: show what compose files exist
+          # ------------------------------------------------------------------
+          echo "→ Looking for Docker Compose files..."
+          COMPOSE_FILES=$(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
+
+          if [ -z "$COMPOSE_FILES" ]; then
+            echo "⚠ No docker-compose.yml / compose.yml files found"
+          else
+            COUNT=$(echo "$COMPOSE_FILES" | wc -l)
+            echo "✅ Found $COUNT Docker Compose file(s):"
+            echo "$COMPOSE_FILES" | sed 's/^/   - /'
+          fi
+          echo
+
+          # ------------------------------------------------------------------
+          # 1. Misconfiguration scan
+          # ------------------------------------------------------------------
           echo "→ Running misconfiguration scan..."
           trivy config \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --format table \
-            apps/tnas/ || MISCONFIG_FAILED=true
+            . || MISCONFIG_FAILED=true
 
           echo
-          # 2. Secret scan (looks for tokens, keys, passwords in the code)
+          # ------------------------------------------------------------------
+          # 2. Secret scan
+          # ------------------------------------------------------------------
           echo "→ Running secret scan..."
           trivy fs \
             --scanners secret \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --format table \
-            apps/tnas/ || SECRET_FAILED=true
+            --skip-dirs .git \
+            . || SECRET_FAILED=true
 
           echo
-          # Final summary
+          # ------------------------------------------------------------------
+          # Final result
+          # ------------------------------------------------------------------
           if [ "${MISCONFIG_FAILED:-false}" = true ] || [ "${SECRET_FAILED:-false}" = true ]; then
             echo "❌ Trivy found issues (see above)"
             exit 1
