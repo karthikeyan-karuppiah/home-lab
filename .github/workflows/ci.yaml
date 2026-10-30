@@ -203,19 +203,17 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
-          # highlight-start
-          scan-ref: '.' # Keep the scanner reference at the root workspace directory
-          # Explicitly pass the modern scanner flag to clear the deprecation warning
+          scan-ref: '.'
           scanners: 'misconfig'
-          trivy-config: |
-            # Explicitly force the engine to look inside your infrastructure directory
-            include-dirs:
-              - "apps/tnas"
-          # highlight-end
           severity: 'CRITICAL,HIGH'
           exit-code: "1"
           ignore-unfixed: true
           version: 'v0.76.1'
+          # highlight-start
+          # Bypasses wrapper bugs by injecting the configuration direct to the engine execution line
+          args: --include-dirs apps/tnas
+          # highlight-end
+
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
