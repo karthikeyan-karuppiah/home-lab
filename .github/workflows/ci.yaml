@@ -240,31 +240,32 @@ jobs:
           echo "→ Running misconfiguration scan on each compose file..."
           for file in "${COMPOSE_FILES[@]}"; do
             echo "   Scanning config: $file"
-            # Format file name for artifact output safekeeping
             safe_name=$(echo "$file" | tr '/' '-' | tr '.' '-')
 
-            # Run table print check
+            # Runs and records config validation checks
             trivy config --severity CRITICAL,HIGH --exit-code 1 --format table "$file" || MISCONFIG_FAILED=true
-
-            # Export Report Document
             trivy config --severity CRITICAL,HIGH --format json --output "trivy-reports/misconfig${safe_name}.json" "$file" || true
           done
           echo
 
           # ------------------------------------------------------------------
-          # 2. Image scan & SBOM generation
+          # 2. Image scan & SBOM generation (Using Structural yq)
           # ------------------------------------------------------------------
           echo "→ Extracting and scanning images referenced in compose files..."
           if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | grep -v '^\s*#' | awk -F'image:' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'" | sed -E 's/\$\{[A-Za-z0-9_]+:-?([^}]+)\}/\1/g' | grep -v '^$' | sort -u)
+
+            # Structurally read only the value of the 'image' keys using pre-installed yq
+            # This completely drops comments, trailing metadata, and formatting fragments
+            mapfile -t IMAGES < <(yq eval '.services.*.image' "${COMPOSE_FILES[@]}" | grep -v 'null' | grep -v '^$' | sed -E 's/\$\{[A-Za-z0-9_]+:-?([^}]+)\}/\1/g' | sort -u)
 
             if [ ${#IMAGES[@]} -eq 0 ]; then
-              echo "   ⚠ No images found inside compose files."
+              echo "   ⚠ No valid images found inside compose files structures."
             else
-              echo "   ✅ Found ${#IMAGES[@]} unique image(s) to isolate."
+              echo "   ✅ Structurally found ${#IMAGES[@]} unique image(s) to scan."
               for img in "${IMAGES[@]}"; do
-                if [[ "$img" == *"\$"* || "$img" == *"{"* ]]; then
-                  echo "   ⚠ Skipping raw variable string: $img"
+                # Ignore unresolved variable fragments safely
+                if [[ "$img" == *"\$"* || "$img" == *"{"* || "$img" == "" ]]; then
+                  echo "   ⚠ Skipping unresolvable runtime target: $img"
                   continue
                 fi
 
@@ -296,7 +297,7 @@ jobs:
           # Final result
           # ------------------------------------------------------------------
           if [ "$MISCONFIG_FAILED" = true ] || [ "$IMAGE_FAILED" = true ] || [ "$SECRET_FAILED" = true ]; then
-            echo "❌ Trivy found issues (see logs above)"
+            echo "❌ Trivy found security issues or configuration risks"
             exit 1
           else
             echo "✅ No critical/high misconfigurations, image vulnerabilities, or secrets found"
@@ -305,7 +306,7 @@ jobs:
       # 4. Upload JSON vulnerability reports back to GitHub Workflow Panel
       - name: Upload Security Reports
         uses: actions/upload-artifact@v4
-        if: always() # Ensures reports upload even if the previous validation run failed
+        if: always()
         with:
           name: trivy-vulnerability-reports
           path: trivy-reports/
@@ -319,7 +320,6 @@ jobs:
           name: container-images-sbom
           path: trivy-sboms/
           retention-days: 7
-
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
