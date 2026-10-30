@@ -199,7 +199,6 @@ jobs:
       # Vulnerability Assessment: Infrastructure Configs (Trivy)
       # -----------------------------------------------------------------------
       # Scans underlying files for bad architectural practices (e.g., running as root).
-      # highlight-start
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.6
         with:
@@ -210,8 +209,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "=== Trivy Config, Secret & Image Scan === "
+          echo "=== Trivy Config, Secret & Image Scan ==="
           echo
+
+          # Create artifact directories
+          mkdir -p trivy-reports trivy-sboms
 
           # ------------------------------------------------------------------
           # Debug: show compose files
@@ -233,39 +235,50 @@ jobs:
           SECRET_FAILED=false
 
           # ------------------------------------------------------------------
-          # 1. Misconfiguration scan – scan each compose file explicitly via filesystem engine
+          # 1. Misconfiguration scan
           # ------------------------------------------------------------------
           echo "→ Running misconfiguration scan on each compose file..."
           for file in "${COMPOSE_FILES[@]}"; do
             echo "   Scanning config: $file"
-            # Passing files directly to trivy config with structural scanning enabled fixes the path warning
-            trivy config \
-              --severity CRITICAL,HIGH \
-              --exit-code 1 \
-              --format table \
-              "$file" || MISCONFIG_FAILED=true
+            # Format file name for artifact output safekeeping
+            safe_name=$(echo "$file" | tr '/' '-' | tr '.' '-')
+
+            # Run table print check
+            trivy config --severity CRITICAL,HIGH --exit-code 1 --format table "$file" || MISCONFIG_FAILED=true
+
+            # Export Report Document
+            trivy config --severity CRITICAL,HIGH --format json --output "trivy-reports/misconfig${safe_name}.json" "$file" || true
           done
           echo
 
           # ------------------------------------------------------------------
-          # 2. Image scan – dynamically extract and scan compose images
+          # 2. Image scan & SBOM generation
           # ------------------------------------------------------------------
           echo "→ Extracting and scanning images referenced in compose files..."
           if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-            # Cleanly extracts everything AFTER the 'image:' declaration, dropping blank tokens and syntax marks
-            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | awk -F'image:' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'" | grep -v '^$' | sort -u)
+            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | grep -v '^\s*#' | awk -F'image:' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'" | sed -E 's/\$\{[A-Za-z0-9_]+:-?([^}]+)\}/\1/g' | grep -v '^$' | sort -u)
 
             if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "   ⚠ No images found inside compose files."
             else
-              echo "   ✅ Found ${#IMAGES[@]} unique image(s) to scan."
+              echo "   ✅ Found ${#IMAGES[@]} unique image(s) to isolate."
               for img in "${IMAGES[@]}"; do
+                if [[ "$img" == *"\$"* || "$img" == *"{"* ]]; then
+                  echo "   ⚠ Skipping raw variable string: $img"
+                  continue
+                fi
+
                 echo "   Scanning image target: $img"
-                trivy image \
-                  --severity CRITICAL,HIGH \
-                  --exit-code 1 \
-                  --format table \
-                  "$img" || IMAGE_FAILED=true
+                safe_img_name=$(echo "$img" | tr '/' '-' | tr ':' '-')
+
+                # Check 1: Output terminal analysis table
+                trivy image --severity CRITICAL,HIGH --exit-code 1 --format table "$img" || IMAGE_FAILED=true
+
+                # Check 2: Generate vulnerability JSON report document
+                trivy image --severity CRITICAL,HIGH --format json --output "trivy-reports/image-${safe_img_name}.json" "$img" || true
+
+                # Check 3: Generate Cyclonedx SBOM
+                trivy image --format cyclonedx --output "trivy-sboms/${safe_img_name}.sbom.json" "$img" || true
               done
             fi
           fi
@@ -275,13 +288,8 @@ jobs:
           # 3. Secret scan
           # ------------------------------------------------------------------
           echo "→ Running secret scan..."
-          trivy fs \
-            --scanners secret \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            --format table \
-            --skip-dirs .git \
-            . || SECRET_FAILED=true
+          trivy fs --scanners secret --severity CRITICAL,HIGH --exit-code 1 --format table --skip-dirs .git . || SECRET_FAILED=true
+          trivy fs --scanners secret --severity CRITICAL,HIGH --format json --output "trivy-reports/secrets-report.json" --skip-dirs .git . || true
           echo
 
           # ------------------------------------------------------------------
@@ -293,6 +301,25 @@ jobs:
           else
             echo "✅ No critical/high misconfigurations, image vulnerabilities, or secrets found"
           fi
+
+      # 4. Upload JSON vulnerability reports back to GitHub Workflow Panel
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always() # Ensures reports upload even if the previous validation run failed
+        with:
+          name: trivy-vulnerability-reports
+          path: trivy-reports/
+          retention-days: 7
+
+      # 5. Upload CycloneDX specification maps back to GitHub Workflow Panel
+      - name: Upload Image SBOMs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-images-sbom
+          path: trivy-sboms/
+          retention-days: 7
+
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
