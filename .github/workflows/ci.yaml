@@ -210,7 +210,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "=== Trivy Config, Secret & Image Scan ==="
+          echo "=== Trivy Config, Secret & Image Scan === "
           echo
 
           # ------------------------------------------------------------------
@@ -238,9 +238,8 @@ jobs:
           echo "→ Running misconfiguration scan on each compose file..."
           for file in "${COMPOSE_FILES[@]}"; do
             echo "   Scanning config: $file"
-            # Using 'trivy fs' with misconfig scanner directly reads individual sub-path targets flawlessly
-            trivy fs \
-              --scanners misconfig \
+            # Passing files directly to trivy config with structural scanning enabled fixes the path warning
+            trivy config \
               --severity CRITICAL,HIGH \
               --exit-code 1 \
               --format table \
@@ -253,15 +252,15 @@ jobs:
           # ------------------------------------------------------------------
           echo "→ Extracting and scanning images referenced in compose files..."
           if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-            # Safely grab unique image tags across all discovered compose files
-            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | awk '{print $2}' | tr -d '"' | tr -d "'" | sort -u)
+            # Cleanly extracts everything AFTER the 'image:' declaration, dropping blank tokens and syntax marks
+            mapfile -t IMAGES < <(grep -E '^\s*image:' "${COMPOSE_FILES[@]}" | awk -F'image:' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'" | grep -v '^$' | sort -u)
 
             if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "   ⚠ No images found inside compose files."
             else
               echo "   ✅ Found ${#IMAGES[@]} unique image(s) to scan."
               for img in "${IMAGES[@]}"; do
-                echo "   Scanning image layer: $img"
+                echo "   Scanning image target: $img"
                 trivy image \
                   --severity CRITICAL,HIGH \
                   --exit-code 1 \
