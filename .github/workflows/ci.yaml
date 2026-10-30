@@ -200,21 +200,16 @@ jobs:
       # -----------------------------------------------------------------------
       # Scans underlying files for bad architectural practices (e.g., running as root).
       - name: Scan infrastructure files for vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          scanners: 'misconfig'
-          severity: 'CRITICAL,HIGH'
-          exit-code: "1"
-          ignore-unfixed: true
-          version: 'v0.76.1'
-          # highlight-start
-          # Standardizes configuration parsing via a robust inline JSON string
-          trivy-config: '{"misconfig": {"include-dirs": ["apps/tnas"]}}'
-          # Prevents Trivy from skipping hidden root layout folders that block discovery
-          skip-dirs: ''
-          # highlight-end
+        # highlight-start
+        # Bypasses the wrapper entirely and executes the installed binary directly
+        run: |
+          trivy fs \
+            --scanners misconfig \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            apps/tnas/
+        # highlight-end
+
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
