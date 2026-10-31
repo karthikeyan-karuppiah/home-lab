@@ -230,32 +230,26 @@ jobs:
           echo
 
           # ------------------------------------------------------------------
-          # 1. Misconfiguration scan (Advisory & Non-blocking)
+          # 1. Misconfiguration scan (Recursive & Non-blocking)
           # ------------------------------------------------------------------
-          echo "→ Running misconfiguration scan on each compose file directory..."
-          if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-            for file in "${COMPOSE_FILES[@]}"; do
-              # EXTRACT THE FOLDER NAME INSTEAD OF THE FILE
-              dir_to_scan=$(dirname "$file")
-              echo "   Scanning config folder: $dir_to_scan"
+          echo "→ Running recursive misconfiguration scan on repository root..."
 
-              safe_name=$(echo "$file" | tr '/' '-' | tr '.' '-')
+          # By scanning the root (.) recursively, Trivy automatically binds all compose files correctly
+          trivy fs \
+            --scanners misconfig \
+            --severity CRITICAL,HIGH \
+            --exit-code 0 \
+            --format table \
+            . || true
 
-              # Point trivy config at the parent directory so it auto-detects correctly
-              trivy config \
-                --severity CRITICAL,HIGH \
-                --exit-code 0 \
-                --format table \
-                "$dir_to_scan" || true
-
-              trivy config \
-                --severity CRITICAL,HIGH \
-                --format json \
-                --output "trivy-reports/misconfig${safe_name}.json" \
-                "$dir_to_scan" || true
-            done
-          fi
+          trivy fs \
+            --scanners misconfig \
+            --severity CRITICAL,HIGH \
+            --format json \
+            --output "trivy-reports/misconfig-root-report.json" \
+            . || true
           echo
+
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
