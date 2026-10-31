@@ -35,6 +35,10 @@ services:
       # Name + email that will appear on commits made by Renovate
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
 
+      # Leave empty here – the real token is injected at runtime from the secret.
+      # This avoids putting the credential into the process environment via Compose.
+      RENOVATE_TOKEN: ""
+
     volumes:
       # Persist Renovate's cache so it doesn't re-download everything every run.
       # Path is on the TNAS host.
@@ -49,28 +53,34 @@ services:
         # By the time this container starts, /run/secrets/renovate-token
         # contains the PLAINTEXT token (either as pure text or as JSON).
         # We therefore do NOT need to run sops inside the container.
+        #
+        # Security note (CL-0020):
+        # We read the token only at runtime from the Docker secret file.
+        # The value never appears as a literal in the Compose file or in
+        # the entrypoint array that `docker inspect` would expose.
         # ---------------------------------------------------------------
 
         if [ -f /run/secrets/renovate-token ]; then
           # Detect whether the decrypted content is JSON or plain/dotenv
           if head -c 1 /run/secrets/renovate-token | grep -q '{'; then
             # JSON format → extract the value of the "RENOVATE_TOKEN" key
-            export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | sed -n 's/.*"RENOVATE_TOKEN"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            # Using sed directly on the file avoids putting the whole content
+            # into the shell command line that can be inspected.
+            export RENOVATE_TOKEN=$$(sed -n 's/.*"RENOVATE_TOKEN"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /run/secrets/renovate-token)
           else
             # Plain text or "RENOVATE_TOKEN=ghp_..." style
-            export RENOVATE_TOKEN=$$(cat /run/secrets/renovate-token | tr -d '\r\n' | sed 's/^RENOVATE_TOKEN=//')
+            export RENOVATE_TOKEN=$$(tr -d '\r\n' < /run/secrets/renovate-token | sed 's/^RENOVATE_TOKEN=//')
           fi
         fi
 
         # Safety check – fail early if we somehow got an empty token
         if [ -z "$$RENOVATE_TOKEN" ]; then
           echo "ERROR: RENOVATE_TOKEN is empty after reading secret" >&2
-          echo "Secret content:" >&2
-          cat /run/secrets/renovate-token >&2
+          echo "Secret file exists but could not extract a usable token" >&2
           exit 1
         fi
 
-        # Just for visibility in the logs
+        # Just for visibility in the logs (length only – never print the token)
         echo "Token loaded successfully (length: $$(echo -n "$$RENOVATE_TOKEN" | wc -c))"
 
         # Hand over to the real Renovate process
