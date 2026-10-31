@@ -1,15 +1,3 @@
-# =============================================================================
-# Pipeline 1: Continuous Integration (CI) - Linting & Security Scans
-# =============================================================================
-# Core Architecture & Security Model:
-#   1. Zero-Trust Security Strategy: Disables root tokens and isolates tasks.
-#   2. Enterprise Standards: Uses verified official release version tags.
-#   3. Secure Artifact Transit: Packages artifacts safely for downstream execution.
-# =============================================================================
-
-name: Continuous Integration
-
-# -----------------------------------------------------------------------------
 # Event Triggers (Webhook Configuration)
 # -----------------------------------------------------------------------------
 on:
@@ -55,7 +43,7 @@ jobs:
     name: Lint & Security Scans
     runs-on: ubuntu-latest
     # Hard constraint to break out of hanging or frozen test tasks
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     # Scoped permissions specifically for security evaluations and scanning
     permissions:
@@ -150,7 +138,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Runtime Evaluation: Docker Compose Syntax Verification
       # -----------------------------------------------------------------------
-      #  Uses Shell Process Substitution instead of basic piping.
+      # Uses Shell Process Substitution instead of basic piping.
       # Basic piping runs steps in an isolated background subshell, causing errors or
       # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
       - name: Validate Docker Compose files
@@ -163,6 +151,53 @@ jobs:
               docker compose -f "$file" config --quiet
             fi
           done < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \))
+
+      # -----------------------------------------------------------------------
+      # Security: Docker Compose Misconfiguration Scan
+      # -----------------------------------------------------------------------
+      # IMPORTANT: Trivy does NOT support docker-compose.yml for misconfiguration scanning.
+      # compose-lint is purpose-built for Compose security checks (OWASP + CIS Docker Benchmark).
+      # It catches privileged containers, Docker socket mounts, missing capability drops,
+      # ports bound to 0.0.0.0, hardcoded secrets, missing resource limits, etc.
+      #
+      # Currently NON-BLOCKING: findings are printed for visibility while we
+      # gradually harden the compose files. Change the final "exit 0" to "exit 1"
+      # when you are ready to enforce the rules.
+      - name: Scan Docker Compose for security misconfigurations
+        run: |
+          set -euo pipefail
+
+          echo "=== Installing compose-lint ==="
+          pip install --quiet compose-lint
+
+          echo
+          echo "=== Scanning Docker Compose files ==="
+
+          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
+
+          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
+            echo "⚠ No Docker Compose files found – skipping"
+            exit 0
+          fi
+
+          echo "✅ Found ${#COMPOSE_FILES[@]} Compose file(s)"
+          FAILED=0
+
+          for file in "${COMPOSE_FILES[@]}"; do
+            echo "→ Scanning $file"
+            if ! compose-lint "$file"; then
+              FAILED=1
+            fi
+            echo
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "⚠ compose-lint found security issues (non-blocking for now)"
+            echo "   Fix gradually, then change the final exit 0 to exit 1."
+            exit 0
+          fi
+
+          echo "✅ No critical Compose security issues found"
 
       # -----------------------------------------------------------------------
       # Conditional Steps: Dockerfile Validation
@@ -196,126 +231,122 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------------------------------
-      # Vulnerability Assessment: Infrastructure Configs (Trivy)
+      # Vulnerability Assessment: Secrets in source (Trivy)
       # -----------------------------------------------------------------------
-      # Scans underlying files for bad architectural practices (e.g., running as root).
+      # Trivy is excellent for secret detection in the repository filesystem.
+      # Misconfiguration scanning for Docker Compose is handled by compose-lint above.
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.6
         with:
           version: v0.76.1
           cache: true
 
-      - name: Scan infrastructure for misconfigurations, secrets & images (Trivy)
+      - name: Scan for secrets with Trivy
+        run: |
+          set -euo pipefail
+          echo "=== Trivy Secret Scan ==="
+          trivy fs \
+            --scanners secret \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --format table \
+            --skip-dirs .git \
+            .
+
+      # -----------------------------------------------------------------------
+      # Container Image Scanning + SBOM Generation (Trivy)
+      # -----------------------------------------------------------------------
+      # 1. Extract image references from all docker-compose files.
+      # 2. Scan each image for known CVEs (CRITICAL / HIGH).
+      # 3. Generate a CycloneDX SBOM per image for supply-chain tracking.
+      #
+      # Currently NON-BLOCKING for image CVEs so the pipeline stays green
+      # while findings are triaged. Change --exit-code 0 to 1 when ready
+      # to enforce image vulnerability gates.
+      - name: Scan container images and generate SBOMs
         run: |
           set -euo pipefail
 
-          echo "=== Trivy Config, Secret & Image Scan ==="
-          echo
+          echo "=== Trivy Image Scan + SBOM Generation ==="
+          mkdir -p trivy-sboms trivy-reports
 
-          # Create artifact directories
-          mkdir -p trivy-reports trivy-sboms
+          # Discover unique image references from Compose files
+          mapfile -t IMAGES < <(
+            find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) \
+              -exec grep -hE '^\s+image:\s+' {} + \
+              | sed -E 's/.*image:[[:space:]]*["'\'']?([^"'\'']+)["'\'']?.*/\1/' \
+              | sort -u
+          )
 
-          # ------------------------------------------------------------------
-          # Debug: Locate and track all Docker Compose configurations
-          # ------------------------------------------------------------------
-          echo "→ Looking for Docker Compose files..."
-          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
-
-          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
-            echo "⚠ No Docker Compose files found"
-          else
-            echo "✅ Found ${#COMPOSE_FILES[@]} Docker Compose file(s):"
-            printf '   - %s\n' "${COMPOSE_FILES[@]}"
+          if [ ${#IMAGES[@]} -eq 0 ]; then
+            echo "⚠ No container images found in Compose files – skipping"
+            exit 0
           fi
+
+          echo "✅ Found ${#IMAGES[@]} unique image(s):"
+          printf '   - %s\n' "${IMAGES[@]}"
           echo
 
-          # ------------------------------------------------------------------
-          # 1. Misconfiguration scan (Advisory & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Running misconfiguration scan on each compose file..."
-          if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-            for file in "${COMPOSE_FILES[@]}"; do
-              echo "   Scanning config target: $file"
-              safe_name=$(echo "$file" | tr '/' '-' | tr '.' '-')
+          SCAN_FAILED=0
 
-              # Using 'trivy fs --scanners misconfig' targeting a path resolves the path discovery issue
-              trivy fs \
-                --scanners misconfig \
-                --severity CRITICAL,HIGH \
-                --exit-code 0 \
-                --format table \
-                "$file" || true
-
-              trivy fs \
-                --scanners misconfig \
-                --severity CRITICAL,HIGH \
-                --format json \
-                --output "trivy-reports/misconfig${safe_name}.json" \
-                "$file" || true
-            done
-          fi
-          echo
-
-          # ------------------------------------------------------------------
-          # 2. Image scan & SBOM generation (Advisory & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Extracting and scanning images referenced in compose files..."
-          if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-
-            # Structurally isolate active image tags via pre-installed yq
-            mapfile -t IMAGES < <(yq eval '.services.*.image' "${COMPOSE_FILES[@]}" | grep -v 'null' | grep -v '^$' | sed -E 's/\$\{[A-Za-z0-9_]+:-?([^}]+)\}/\1/g' | sort -u)
-
-            if [ ${#IMAGES[@]} -eq 0 ]; then
-              echo "   ⚠ No valid images found inside compose files structures."
-            else
-              echo "   ✅ Structurally found ${#IMAGES[@]} unique image(s) to scan."
-              for img in "${IMAGES[@]}"; do
-                if [[ "$img" == *"\$"* || "$img" == *"{"* || "$img" == "" ]]; then
-                  echo "   Skipping target variable string: $img"
-                  continue
-                fi
-
-                echo "   Scanning image target: $img"
-                safe_img_name=$(echo "$img" | tr '/' '-' | tr ':' '-')
-
-                trivy image --severity CRITICAL,HIGH --exit-code 0 --format table "$img" || true
-                trivy image --severity CRITICAL,HIGH --format json --output "trivy-reports/image-${safe_img_name}.json" "$img" || true
-                trivy image --format cyclonedx --output "trivy-sboms/${safe_img_name}.sbom.json" "$img" || true
-              done
+          for img in "${IMAGES[@]}"; do
+            # Skip empty or variable-only references (e.g. ${IMAGE})
+            if [[ -z "$img" || "$img" == *'${'* ]]; then
+              echo "→ Skipping unresolved image reference: $img"
+              continue
             fi
+
+            safe_name=$(echo "$img" | tr '/:' '__')
+            echo "→ Scanning image: $img"
+
+            # Vulnerability table (non-blocking for now)
+            if ! trivy image \
+              --severity CRITICAL,HIGH \
+              --format table \
+              --exit-code 0 \
+              "$img"; then
+              SCAN_FAILED=1
+            fi
+
+            # Machine-readable report
+            trivy image \
+              --severity CRITICAL,HIGH \
+              --format json \
+              --output "trivy-reports/${safe_name}-vuln.json" \
+              --exit-code 0 \
+              "$img" || true
+
+            # CycloneDX SBOM for supply-chain inventory
+            trivy image \
+              --format cyclonedx \
+              --output "trivy-sboms/${safe_name}-sbom.json" \
+              "$img" || true
+
+            echo
+          done
+
+          if [ "$SCAN_FAILED" -eq 1 ]; then
+            echo "⚠ Some images reported CRITICAL/HIGH findings (non-blocking for now)"
+          else
+            echo "✅ No CRITICAL/HIGH vulnerabilities reported for scanned images"
           fi
-          echo
-
-          # ------------------------------------------------------------------
-          # 3. Secret scan (Advisory & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Running secret scan..."
-          trivy fs --scanners secret --severity CRITICAL,HIGH --exit-code 0 --format table --skip-dirs .git . || true
-          trivy fs --scanners secret --severity CRITICAL,HIGH --format json --output "trivy-reports/secrets-report.json" --skip-dirs .git . || true
-          echo
-
-          echo "✅ Trivy scan process finalized successfully"
-
-      # 4. Upload JSON vulnerability reports back to GitHub Workflow Panel
-      - name: Upload Security Reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: trivy-vulnerability-reports
-          path: trivy-reports/
-          retention-days: 7
-
-      # 5. Upload CycloneDX specification maps back to GitHub Workflow Panel
-      - name: Upload Image SBOMs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: container-images-sbom
-          path: trivy-sboms/
-          retention-days: 7
 
       # -----------------------------------------------------------------------
-      #  Build Data Passing Setup
+      # Artifact Upload: SBOMs + Vulnerability Reports
+      # -----------------------------------------------------------------------
+      # Keeps scan outputs available for later review or release attachment.
+      - name: Upload Trivy SBOMs and reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-scan-results
+          path: |
+            trivy-sboms/
+            trivy-reports/
+          retention-days: 30
+
+      # -----------------------------------------------------------------------
+      # Build Data Passing Setup
       # -----------------------------------------------------------------------
       # Generates a safe deployment configuration manifest build payload.
       - name: Generate Build Payload

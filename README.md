@@ -48,8 +48,11 @@ This monorepo utilizes an advanced, decoupled multi-stage execution pipeline bui
 
 #### 1. Continuous Integration (`.github/workflows/ci.yml`)
 Runs asynchronously on all target pushes and active pull requests to fail-fast on bad configuration patterns.
-* **Security & Vulnerability Auditing**: Implements **Gitleaks** to catch credential spills and **Aqua Security Trivy** to parse IaC structural errors.
-* **Static Code Analysis**: Employs **Hadolint** for Dockerfile syntactic validation and **Yamllint** for infrastructure specification maps.
+* **Secret Detection**: Gitleaks (full git history) and Trivy filesystem secret scanning to catch credential spills before merge.
+* **Docker Compose Security**: compose-lint (OWASP / CIS Docker Benchmark) checks for privileged mode, Docker socket mounts, dangerous capabilities, unbound ports, missing resource limits, and unsafe credential handling.
+* **Container Image Scanning**: Trivy scans images referenced in Compose files for CRITICAL/HIGH CVEs and generates CycloneDX SBOMs as workflow artifacts for supply-chain inventory.
+* **Static Code Analysis**: Hadolint for Dockerfile best practices and Yamllint for infrastructure YAML specifications.
+* **Compose Structure Validation**: `docker compose config` validates every Compose file for structural integrity before merge.
 * **Cross-Boundary Data Transit**: Packages verified metadata into a secure short-retention GitHub build artifact on successful runs.
 
 #### 2. Release Management (`.github/workflows/release.yml`)
