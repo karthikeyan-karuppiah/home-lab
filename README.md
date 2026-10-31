@@ -1,9 +1,10 @@
 # Home Infrastructure Lab
+# Home Infrastructure Lab
 
-[![Continuous Integration](https://shields.io)](https://github.com/workflows/ci.yml)
-[![Release Management](https://shields.io)](https://github.com)
-[![PR Title Linter](https://shields.io)](https://github.com)
-[![Renovate](https://shields.io)](https://renovatebot.com)
+[![Continuous Integration](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml)
+[![Release Management](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml)
+[![PR Title Linter](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/pr-lint.yml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/pr-lint.yml)
+[![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovatebot)](https://renovatebot.com)
 
 A declarative, GitOps-driven infrastructure monorepo for managing private network utilities, secure edge ingress, and media orchestration services deployed on an **Intel-powered TerraMaster F4-424 Pro** NAS cluster.
 
