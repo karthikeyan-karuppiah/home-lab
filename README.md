@@ -1,5 +1,4 @@
 # Home Infrastructure Lab
-# Home Infrastructure Lab
 
 [![Continuous Integration](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yaml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml)
 [![Release Management](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yaml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml)
@@ -29,7 +28,7 @@ This monorepo utilizes an advanced, decoupled multi-stage execution pipeline bui
   [ Pull Request Opened ]
              │
              ├──► (Pipeline 3) PR Title Linter  ──► Checks Semantic Compliance
-             └──► (Pipeline 1) CI Engine        ──► Static Scans, Linters & Trivy
+             └──► (Pipeline 1) CI Engine        ──► Lint · Secrets · Compose Security · Image CVE/SBOM
                                        │
                               [ Merge to main ]
                                        │
