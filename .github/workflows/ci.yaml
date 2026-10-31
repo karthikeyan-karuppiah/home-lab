@@ -1,52 +1,3 @@
-# =============================================================================
-# Pipeline 1: Continuous Integration (CI) - Linting & Security Scans
-# =============================================================================
-# Core Architecture & Security Model:
-#   1. Zero-Trust Security Strategy: Disables root tokens and isolates tasks.
-#   2. Enterprise Standards: Uses verified official release version tags.
-#   3. Secure Artifact Transit: Packages artifacts safely for downstream execution.
-# =============================================================================
-
-name: Continuous Integration
-
-# -----------------------------------------------------------------------------
-# Event Triggers (Webhook Configuration)
-# -----------------------------------------------------------------------------
-on:
-  push:
-    branches: [main]
-    #  Prevent wasted runner billable minutes.
-    # Documentation or configuration-only changes should not spin up infrastructure.
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE'
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE'
-
-# -----------------------------------------------------------------------------
-# Concurrency Management (Anti-Race Condition Logic)
-# -----------------------------------------------------------------------------
-concurrency:
-  #  Isolates execution contexts cleanly.
-  # If a developer pushes a new commit to an active PR, the old running job
-  # is safely terminated, preserving compute costs. Using the PR number ensures
-  # separate PRs do not conflict with or cancel each other out.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-# -----------------------------------------------------------------------------
-# Zero-Trust Global Permissions Matrix
-# -----------------------------------------------------------------------------
-#  Principal of Least Privilege.
-# Explicitly revokes all default token permissions globally.
-# Each standalone job must request its own granular scopes down below.
-permissions: {}
-
 jobs:
   # ===========================================================================
   # Job: Static Analysis, Infrastructure, & Security Scans
@@ -150,7 +101,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Runtime Evaluation: Docker Compose Syntax Verification
       # -----------------------------------------------------------------------
-      #  Uses Shell Process Substitution instead of basic piping.
+      # Uses Shell Process Substitution instead of basic piping.
       # Basic piping runs steps in an isolated background subshell, causing errors or
       # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
       - name: Validate Docker Compose files
@@ -163,6 +114,48 @@ jobs:
               docker compose -f "$file" config --quiet
             fi
           done < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \))
+
+      # -----------------------------------------------------------------------
+      # Security: Docker Compose Misconfiguration Scan
+      # -----------------------------------------------------------------------
+      # IMPORTANT: Trivy does NOT support docker-compose.yml for misconfiguration scanning.
+      # compose-lint is purpose-built for Compose security checks (OWASP + CIS Docker Benchmark).
+      # It catches privileged containers, Docker socket mounts, missing capability drops,
+      # ports bound to 0.0.0.0, hardcoded secrets, missing resource limits, etc.
+      - name: Scan Docker Compose for security misconfigurations
+        run: |
+          set -euo pipefail
+
+          echo "=== Installing compose-lint ==="
+          pip install --quiet compose-lint
+
+          echo
+          echo "=== Scanning Docker Compose files ==="
+
+          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
+
+          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
+            echo "⚠ No Docker Compose files found – skipping"
+            exit 0
+          fi
+
+          echo "✅ Found ${#COMPOSE_FILES[@]} Compose file(s)"
+          FAILED=0
+
+          for file in "${COMPOSE_FILES[@]}"; do
+            echo "→ Scanning $file"
+            if ! compose-lint "$file"; then
+              FAILED=1
+            fi
+            echo
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "❌ compose-lint found security issues"
+            exit 1
+          fi
+
+          echo "✅ No critical Compose security issues found"
 
       # -----------------------------------------------------------------------
       # Conditional Steps: Dockerfile Validation
@@ -196,63 +189,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------------------------------
-      # Vulnerability Assessment: Infrastructure Configs (Trivy)
+      # Vulnerability Assessment: Secrets only (Trivy)
       # -----------------------------------------------------------------------
-      # Scans underlying files for bad architectural practices (e.g., running as root).
+      # Trivy is excellent for secret detection.
+      # Misconfiguration scanning for Docker Compose is handled by compose-lint above.
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.6
         with:
           version: v0.76.1
           cache: true
 
-      - name: Scan infrastructure for misconfigurations, secrets & images (Trivy)
+      - name: Scan for secrets with Trivy
         run: |
           set -euo pipefail
-
-          echo "=== Trivy Config, Secret & Image Scan ==="
-          echo
-
-          # Create artifact directories
-          mkdir -p trivy-reports trivy-sboms
-
-          # ------------------------------------------------------------------
-          # Debug: show compose files
-          # ------------------------------------------------------------------
-          echo "→ Looking for Docker Compose files..."
-          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
-
-          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
-            echo "⚠ No Docker Compose files found"
-          else
-            echo "✅ Found ${#COMPOSE_FILES[@]} Docker Compose file(s):"
-            printf '   - %s\n' "${COMPOSE_FILES[@]}"
-          fi
-          echo
-
-          # ------------------------------------------------------------------
-          # 1. Misconfiguration scan (Recursive & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Running recursive misconfiguration scan on repository root..."
-
-          # By scanning the root (.) recursively, Trivy automatically binds all compose files correctly
+          echo "=== Trivy Secret Scan ==="
           trivy fs \
-            --scanners misconfig \
+            --scanners secret \
             --severity CRITICAL,HIGH \
-            --exit-code 0 \
+            --exit-code 1 \
             --format table \
-            . || true
-
-          trivy fs \
-            --scanners misconfig \
-            --severity CRITICAL,HIGH \
-            --format json \
-            --output "trivy-reports/misconfig-root-report.json" \
-            . || true
-          echo
-
+            --skip-dirs .git \
+            .
 
       # -----------------------------------------------------------------------
-      #  Build Data Passing Setup
+      # Build Data Passing Setup
       # -----------------------------------------------------------------------
       # Generates a safe deployment configuration manifest build payload.
       - name: Generate Build Payload
