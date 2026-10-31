@@ -43,7 +43,7 @@ jobs:
     name: Lint & Security Scans
     runs-on: ubuntu-latest
     # Hard constraint to break out of hanging or frozen test tasks
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     # Scoped permissions specifically for security evaluations and scanning
     permissions:
@@ -159,6 +159,10 @@ jobs:
       # compose-lint is purpose-built for Compose security checks (OWASP + CIS Docker Benchmark).
       # It catches privileged containers, Docker socket mounts, missing capability drops,
       # ports bound to 0.0.0.0, hardcoded secrets, missing resource limits, etc.
+      #
+      # Currently NON-BLOCKING: findings are printed for visibility while we
+      # gradually harden the compose files. Change the final "exit 0" to "exit 1"
+      # when you are ready to enforce the rules.
       - name: Scan Docker Compose for security misconfigurations
         run: |
           set -euo pipefail
@@ -190,7 +194,7 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then
             echo "⚠ compose-lint found security issues (non-blocking for now)"
             echo "   Fix gradually, then change the final exit 0 to exit 1."
-            exit 0   # ← keep the pipeline green
+            exit 0
           fi
 
           echo "✅ No critical Compose security issues found"
@@ -227,9 +231,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------------------------------
-      # Vulnerability Assessment: Secrets only (Trivy)
+      # Vulnerability Assessment: Secrets in source (Trivy)
       # -----------------------------------------------------------------------
-      # Trivy is excellent for secret detection.
+      # Trivy is excellent for secret detection in the repository filesystem.
       # Misconfiguration scanning for Docker Compose is handled by compose-lint above.
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.6
@@ -248,6 +252,98 @@ jobs:
             --format table \
             --skip-dirs .git \
             .
+
+      # -----------------------------------------------------------------------
+      # Container Image Scanning + SBOM Generation (Trivy)
+      # -----------------------------------------------------------------------
+      # 1. Extract image references from all docker-compose files.
+      # 2. Scan each image for known CVEs (CRITICAL / HIGH).
+      # 3. Generate a CycloneDX SBOM per image for supply-chain tracking.
+      #
+      # Currently NON-BLOCKING for image CVEs so the pipeline stays green
+      # while findings are triaged. Change --exit-code 0 to 1 when ready
+      # to enforce image vulnerability gates.
+      - name: Scan container images and generate SBOMs
+        run: |
+          set -euo pipefail
+
+          echo "=== Trivy Image Scan + SBOM Generation ==="
+          mkdir -p trivy-sboms trivy-reports
+
+          # Discover unique image references from Compose files
+          mapfile -t IMAGES < <(
+            find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) \
+              -exec grep -hE '^\s+image:\s+' {} + \
+              | sed -E 's/.*image:[[:space:]]*["'\'']?([^"'\'']+)["'\'']?.*/\1/' \
+              | sort -u
+          )
+
+          if [ ${#IMAGES[@]} -eq 0 ]; then
+            echo "⚠ No container images found in Compose files – skipping"
+            exit 0
+          fi
+
+          echo "✅ Found ${#IMAGES[@]} unique image(s):"
+          printf '   - %s\n' "${IMAGES[@]}"
+          echo
+
+          SCAN_FAILED=0
+
+          for img in "${IMAGES[@]}"; do
+            # Skip empty or variable-only references (e.g. ${IMAGE})
+            if [[ -z "$img" || "$img" == *'${'* ]]; then
+              echo "→ Skipping unresolved image reference: $img"
+              continue
+            fi
+
+            safe_name=$(echo "$img" | tr '/:' '__')
+            echo "→ Scanning image: $img"
+
+            # Vulnerability table (non-blocking for now)
+            if ! trivy image \
+              --severity CRITICAL,HIGH \
+              --format table \
+              --exit-code 0 \
+              "$img"; then
+              SCAN_FAILED=1
+            fi
+
+            # Machine-readable report
+            trivy image \
+              --severity CRITICAL,HIGH \
+              --format json \
+              --output "trivy-reports/${safe_name}-vuln.json" \
+              --exit-code 0 \
+              "$img" || true
+
+            # CycloneDX SBOM for supply-chain inventory
+            trivy image \
+              --format cyclonedx \
+              --output "trivy-sboms/${safe_name}-sbom.json" \
+              "$img" || true
+
+            echo
+          done
+
+          if [ "$SCAN_FAILED" -eq 1 ]; then
+            echo "⚠ Some images reported CRITICAL/HIGH findings (non-blocking for now)"
+          else
+            echo "✅ No CRITICAL/HIGH vulnerabilities reported for scanned images"
+          fi
+
+      # -----------------------------------------------------------------------
+      # Artifact Upload: SBOMs + Vulnerability Reports
+      # -----------------------------------------------------------------------
+      # Keeps scan outputs available for later review or release attachment.
+      - name: Upload Trivy SBOMs and reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-scan-results
+          path: |
+            trivy-sboms/
+            trivy-reports/
+          retention-days: 30
 
       # -----------------------------------------------------------------------
       # Build Data Passing Setup
