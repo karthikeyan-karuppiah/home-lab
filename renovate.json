@@ -9,8 +9,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^README\\.md$"
+      "managerFilePatterns": [
+        "/^README\\.md$/"
       ],
       "matchStrings": [
         "`(?<depName>[^`\\s]+):(?<currentValue>[^`\\s]+)`\\s*<!--\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s+depName=(?<extractedDepName>[^\\s]+)\\s*-->"
