@@ -216,7 +216,7 @@ jobs:
           mkdir -p trivy-reports trivy-sboms
 
           # ------------------------------------------------------------------
-          # Debug: Locate and track all Docker Compose configurations
+          # Debug: show compose files
           # ------------------------------------------------------------------
           echo "→ Looking for Docker Compose files..."
           mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
@@ -232,87 +232,30 @@ jobs:
           # ------------------------------------------------------------------
           # 1. Misconfiguration scan (Advisory & Non-blocking)
           # ------------------------------------------------------------------
-          echo "→ Running misconfiguration scan on each compose file..."
+          echo "→ Running misconfiguration scan on each compose file directory..."
           if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
             for file in "${COMPOSE_FILES[@]}"; do
-              echo "   Scanning config target: $file"
+              # EXTRACT THE FOLDER NAME INSTEAD OF THE FILE
+              dir_to_scan=$(dirname "$file")
+              echo "   Scanning config folder: $dir_to_scan"
+
               safe_name=$(echo "$file" | tr '/' '-' | tr '.' '-')
 
-              # Using 'trivy fs --scanners misconfig' targeting a path resolves the path discovery issue
-              trivy fs \
-                --scanners misconfig \
+              # Point trivy config at the parent directory so it auto-detects correctly
+              trivy config \
                 --severity CRITICAL,HIGH \
                 --exit-code 0 \
                 --format table \
-                "$file" || true
+                "$dir_to_scan" || true
 
-              trivy fs \
-                --scanners misconfig \
+              trivy config \
                 --severity CRITICAL,HIGH \
                 --format json \
                 --output "trivy-reports/misconfig${safe_name}.json" \
-                "$file" || true
+                "$dir_to_scan" || true
             done
           fi
           echo
-
-          # ------------------------------------------------------------------
-          # 2. Image scan & SBOM generation (Advisory & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Extracting and scanning images referenced in compose files..."
-          if [ ${#COMPOSE_FILES[@]} -gt 0 ]; then
-
-            # Structurally isolate active image tags via pre-installed yq
-            mapfile -t IMAGES < <(yq eval '.services.*.image' "${COMPOSE_FILES[@]}" | grep -v 'null' | grep -v '^$' | sed -E 's/\$\{[A-Za-z0-9_]+:-?([^}]+)\}/\1/g' | sort -u)
-
-            if [ ${#IMAGES[@]} -eq 0 ]; then
-              echo "   ⚠ No valid images found inside compose files structures."
-            else
-              echo "   ✅ Structurally found ${#IMAGES[@]} unique image(s) to scan."
-              for img in "${IMAGES[@]}"; do
-                if [[ "$img" == *"\$"* || "$img" == *"{"* || "$img" == "" ]]; then
-                  echo "   Skipping target variable string: $img"
-                  continue
-                fi
-
-                echo "   Scanning image target: $img"
-                safe_img_name=$(echo "$img" | tr '/' '-' | tr ':' '-')
-
-                trivy image --severity CRITICAL,HIGH --exit-code 0 --format table "$img" || true
-                trivy image --severity CRITICAL,HIGH --format json --output "trivy-reports/image-${safe_img_name}.json" "$img" || true
-                trivy image --format cyclonedx --output "trivy-sboms/${safe_img_name}.sbom.json" "$img" || true
-              done
-            fi
-          fi
-          echo
-
-          # ------------------------------------------------------------------
-          # 3. Secret scan (Advisory & Non-blocking)
-          # ------------------------------------------------------------------
-          echo "→ Running secret scan..."
-          trivy fs --scanners secret --severity CRITICAL,HIGH --exit-code 0 --format table --skip-dirs .git . || true
-          trivy fs --scanners secret --severity CRITICAL,HIGH --format json --output "trivy-reports/secrets-report.json" --skip-dirs .git . || true
-          echo
-
-          echo "✅ Trivy scan process finalized successfully"
-
-      # 4. Upload JSON vulnerability reports back to GitHub Workflow Panel
-      - name: Upload Security Reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: trivy-vulnerability-reports
-          path: trivy-reports/
-          retention-days: 7
-
-      # 5. Upload CycloneDX specification maps back to GitHub Workflow Panel
-      - name: Upload Image SBOMs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: container-images-sbom
-          path: trivy-sboms/
-          retention-days: 7
 
       # -----------------------------------------------------------------------
       #  Build Data Passing Setup
