@@ -1,0 +1,16 @@
+# .compose-lint.yaml
+fail-on: high
+
+# Rules we accept in this home-lab for now
+ignore:
+  - CL-0001   # Docker socket – required by doco-cd
+  - CL-0011   # NET_ADMIN – required by WireGuard
+  - CL-0024   # SYS_MODULE – required by WireGuard
+  # Optional: ignore medium noise until you harden further
+  # - CL-0003
+  # - CL-0005
+  # - CL-0006
+  # - CL-0007
+  # - CL-0018
+  # - CL-0019
+  # - CL-0026
