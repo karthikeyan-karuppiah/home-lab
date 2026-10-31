@@ -1,16 +1,24 @@
 # .compose-lint.yaml
-fail-on: high
+# Suppress expected home-lab findings. Suppressed items still appear as
+# SUPPRESSED in the report but do not fail the exit code.
 
-# Rules we accept in this home-lab for now
-ignore:
-  - CL-0001   # Docker socket – required by doco-cd
-  - CL-0011   # NET_ADMIN – required by WireGuard
-  - CL-0024   # SYS_MODULE – required by WireGuard
-  # Optional: ignore medium noise until you harden further
-  # - CL-0003
-  # - CL-0005
-  # - CL-0006
-  # - CL-0007
-  # - CL-0018
-  # - CL-0019
-  # - CL-0026
+rules:
+  # doco-cd needs the Docker socket to manage containers
+  CL-0001:
+    exclude_services:
+      app: "Required by doco-cd to control Docker on the TNAS host"
+
+  # WireGuard needs these capabilities to manage the VPN interface / kernel module
+  CL-0011:
+    exclude_services:
+      wg-easy: "Required for WireGuard VPN (NET_ADMIN)"
+
+  CL-0024:
+    exclude_services:
+      wg-easy: "Required for WireGuard kernel module (SYS_MODULE)"
+
+  # Renovate reads the token from a Docker secret at runtime.
+  # The rule still flags the name RENOVATE_TOKEN inside the entrypoint script.
+  CL-0020:
+    exclude_services:
+      renovate: "Token is loaded at runtime from /run/secrets/renovate-token, not embedded as a literal"
