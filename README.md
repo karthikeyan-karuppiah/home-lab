@@ -1,8 +1,8 @@
 # Home Infrastructure Lab
 # Home Infrastructure Lab
 
-[![Continuous Integration](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml)
-[![Release Management](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml)
+[![Continuous Integration](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yaml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/ci.yml)
+[![Release Management](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yaml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/release.yml)
 [![PR Title Linter](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/pr-lint.yml/badge.svg)](https://github.com/karthikeyan-karuppiah/home-lab/actions/workflows/pr-lint.yml)
 [![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovatebot)](https://renovatebot.com)
 
