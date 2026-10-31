@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.2...v1.1.3) (2026-10-31)
+
+
+### Miscellaneous Chores
+
+* **deps:** update ghcr.io/kimdre/doco-cd docker tag to v0.131.0 ([51035c3](https://github.com/karthikeyan-karuppiah/home-lab/commit/51035c3d8270b53138fa127875fec0c7764741bd))
+* **deps:** update ghcr.io/kimdre/doco-cd docker tag to v0.131.0 ([20a655b](https://github.com/karthikeyan-karuppiah/home-lab/commit/20a655bd67acc6718f95fedff538e68c089a9e4a))
+
 ## [1.1.2](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.1...v1.1.2) (2026-10-30)
 
 
