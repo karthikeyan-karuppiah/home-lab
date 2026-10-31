@@ -1,3 +1,40 @@
+# Event Triggers (Webhook Configuration)
+# -----------------------------------------------------------------------------
+on:
+  push:
+    branches: [main]
+    #  Prevent wasted runner billable minutes.
+    # Documentation or configuration-only changes should not spin up infrastructure.
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+
+# -----------------------------------------------------------------------------
+# Concurrency Management (Anti-Race Condition Logic)
+# -----------------------------------------------------------------------------
+concurrency:
+  #  Isolates execution contexts cleanly.
+  # If a developer pushes a new commit to an active PR, the old running job
+  # is safely terminated, preserving compute costs. Using the PR number ensures
+  # separate PRs do not conflict with or cancel each other out.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# -----------------------------------------------------------------------------
+# Zero-Trust Global Permissions Matrix
+# -----------------------------------------------------------------------------
+#  Principal of Least Privilege.
+# Explicitly revokes all default token permissions globally.
+# Each standalone job must request its own granular scopes down below.
+permissions: {}
+
 jobs:
   # ===========================================================================
   # Job: Static Analysis, Infrastructure, & Security Scans
