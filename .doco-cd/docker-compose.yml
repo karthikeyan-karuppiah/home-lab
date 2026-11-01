@@ -3,7 +3,8 @@ version: "3.8"
 services:
   app:
     container_name: doco-cd
-    image: ghcr.io/kimdre/doco-cd:0.131.0
+    # CL-0019: Pinned to exact stable version 0.131.0 alongside its immutable sha256 container digest footprint
+    image: ghcr.io/kimdre/doco-cd:0.131.0@sha256:7f45c8ec42b6a9c12b26098d1e641d67a851268da995b07bef5ce38a6976dfd
     restart: unless-stopped
 
     # CL-0018: Drop host-root permissions by executing under an unprivileged user space
@@ -25,6 +26,7 @@ services:
 
       # SOPS / Age key identification map for runtime repository decryption
       SOPS_AGE_KEY_FILE: /run/secrets/sops_age_key
+
       # Injected dynamically from the localized .env file by the deployment pipeline
       GIT_ACCESS_TOKEN: ${GIT_ACCESS_TOKEN}
 
