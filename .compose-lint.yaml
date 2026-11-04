@@ -22,3 +22,9 @@ rules:
   CL-0020:
     exclude_services:
       renovate: "Token is loaded at runtime from /run/secrets/renovate-token, not embedded as a literal"
+
+  # Nginx Proxy Manager needs public port exposure to function as the ingress controller
+  CL-0005:
+    exclude_services:
+      wg-easy: "Required for WireGuard VPN (NET_ADMIN)"
+      nginx-proxy-manager: "Required to accept public incoming HTTP, HTTPS, and Admin Dashboard connections on the host adapters"
