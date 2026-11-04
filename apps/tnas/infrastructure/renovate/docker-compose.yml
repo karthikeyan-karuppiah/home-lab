@@ -44,8 +44,8 @@ services:
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
 
     volumes:
-      # Bypasses host ACL locks by using an isolated Docker-managed storage volume
-      - renovate-cache:/usr/src/app/tmp
+      # Fix: Mount the named volume directly to the correct internal Renovate cache folder footprint
+      - renovate-cache:/tmp/renovate
 
     tmpfs:
       # Ephemeral memory paths providing write access fields required by the read-only layer root

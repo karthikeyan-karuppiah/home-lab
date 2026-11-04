@@ -1,28 +1,116 @@
 version: "3.8"
 
 services:
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
+  grafana:
+    container_name: grafana
+    # CL-0004 / CL-0019: Pinned to a specific stable release version with immutable tag parameters
+    image: grafana/grafana-oss:11.5.1
     restart: unless-stopped
-    user: "0:0"  # <--- CRUCIAL! Overrides container permissions to solve the host folder block
+
+    # CL-0018: Drop host-root permissions by executing under an unprivileged user space
+    user: "472:472"
+
+    # CL-0007: Deny container file system mutations to prevent malware persistence
+    read_only: true
+
+    # CL-0003: Prevent child processes from gathering execution privileges
+    security_opt:
+      - no-new-privileges:true
+
+    ports:
+      # CL-0005: Bind port to localhost only; route traffic securely via Nginx Proxy Manager
+      - "127.0.0.1:3000:3000"
+
+    # Reads your decrypted environment configuration files automatically via Doco-CD
+    env_file:
+      - docker-compose.enc.env
+
+    environment:
+      # CL-0020: Instructs Grafana to read its password from an internal temporary memory file
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /tmp/.gfx_pwd
+
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        # Write the variable into volatile RAM memory files
+        echo "$${GF_SECURITY_ADMIN_PASSWORD}" > /tmp/.gfx_pwd
+        # Erase the master environment key instantly so 'docker inspect' can't leak it
+        unset GF_SECURITY_ADMIN_PASSWORD
+        # Hand over execution to the original container boot script
+        exec /run.sh
+
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - /Volume1/DockerAppsData/prometheus/data:/prometheus
+      # Bypasses host ACL blocks by using an isolated Docker-managed storage volume
+      - grafana-storage:/var/lib/grafana
+
+    tmpfs:
+      # Writable transient paths required by the read-only partition layout
+      - /tmp
+      - /run
+      - /var/lib/grafana/tmp
+
+    cap_drop:
+      # CL-0006: Drop all inherited Linux kernel privileges
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce resource ceilings to prevent host starvation
+          cpus: '0.50'
+          memory: 512M
+
+  prometheus:
+    container_name: prometheus
+    # CL-0004 / CL-0019: Pinned to a specific stable release version with immutable tag parameters
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+
+    # CL-0018: Drop host-root permissions by executing under an unprivileged user space
+    user: "65534:65534"
+
+    # CL-0007: Deny container file system mutations to prevent malware persistence
+    read_only: true
+
+    # CL-0003: Prevent child processes from gathering execution privileges
+    security_opt:
+      - no-new-privileges:true
+
+    ports:
+      # CL-0005: Bind port to localhost only; route traffic securely via Nginx Proxy Manager
+      - "127.0.0.1:9090:9090"
+
+    volumes:
+      # Configuration remains a local read-only bind mount, but operational database moves to a named volume
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-storage:/prometheus
+
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-    ports:
-      - "9090:9090"
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
 
-  grafana:
-    image: grafana/grafana-oss:latest
-    container_name: grafana
-    restart: unless-stopped
-    user: "0:0"  # (Keeps Grafana working cleanly too!)
-    ports:
-      - "3000:3000"
-    volumes:
-      - /Volume1/DockerAppsData/grafana:/var/lib/grafana
-    env_file:
-      - docker-compose.enc.env # Doco-CD decrypts this and injects the keys directly
+    tmpfs:
+      # Writable ephemeral operations path
+      - /tmp
+
+    cap_drop:
+      # CL-0006: Drop all inherited Linux kernel privileges
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce resource ceilings to prevent host starvation
+          cpus: '0.50'
+          memory: 512M
+
+# ---------------------------------------------------------------
+# Volume declarations
+# ---------------------------------------------------------------
+volumes:
+  # Declares the new named data volumes managed completely by the Docker Engine storage driver
+  grafana-storage:
+  prometheus-storage:
