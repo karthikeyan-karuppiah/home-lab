@@ -2,13 +2,57 @@ version: "3.8"
 
 services:
   nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:latest
     container_name: nginx-proxy-manager
+    # CL-0019: Pinned to exact stable version 2.12.3 along with its immutable container digest checksum
+    image: jc21/nginx-proxy-manager:2.12.3@sha256:dfbdf232b7d466f2043640b610c14b304f5e08bc0a2b53b70b3fa3fb3c6cfd55
     restart: unless-stopped
+
+    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors
+    read_only: true
+
+    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups
+    security_opt:
+      - no-new-privileges:true
+
     ports:
-      - "8080:80"        # Mapped to listen for raw HTTP web requests
-      - "81:81"        # Mapped to expose the configuration dashboard admin screen
-      - "8443:443"      # Mapped to process secure local SSL/HTTPS data channels
+      # CL-0005: Public ingress channels intentionally exposed to accept incoming traffic (Suppressed via .compose-lint.yaml)
+      - "8080:80"   # HTTP Ingress Routing Inbound Map
+      - "81:81"     # Configuration Dashboard Admin Portal
+      - "8443:443"  # HTTPS Encrypted SSL Data Channels
+
     volumes:
-      - /Volume1/DockerAppsData/nginx-proxy/data:/data
-      - /Volume1/DockerAppsData/nginx-proxy/letsencrypt:/etc/letsencrypt
+      # Persistent configuration and certificate parameters stored securely inside named Docker volumes
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+
+    tmpfs:
+      # Ephemeral memory locations supporting required write structures and locks under read-only roots
+      - /tmp
+      - /run
+      - /var/cache/nginx
+      - /var/lib/nginx
+      - /var/log/nginx
+
+    cap_drop:
+      # CL-0006: Drop all capabilities and add back only the specific flags required by Nginx to bind low ports and manage sockets
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS
+          cpus: '0.50'
+          memory: 512M
+
+# ---------------------------------------------------------------
+# Volume declarations
+# ---------------------------------------------------------------
+volumes:
+  npm-data:
+  npm-letsencrypt:
