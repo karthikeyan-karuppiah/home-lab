@@ -7,18 +7,18 @@ services:
     image: grafana/grafana-oss:11.5.1@sha256:d87573fdfc71e9a263155701c9066dd2641a9980d268d00e57201c1bc1a58bc2
     restart: unless-stopped
 
-    # CL-0018: Drop host-root privileges by running under the standard internal Grafana user account
+    # CL-0018: Drop host-root privileges by running under the standard internal Grafana user account [2]
     user: "472:472"
 
-    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors
+    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors [8]
     read_only: true
 
-    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups
+    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups [4]
     security_opt:
       - no-new-privileges:true
 
     ports:
-      # CL-0005: Bind port to localhost only; routes securely via Nginx Proxy Manager
+      # CL-0005: Bind port to localhost only; routes securely via Nginx Proxy Manager [5a]
       - "127.0.0.1:3000:3000"
 
     # Safely parses your decrypted environment variables at deployment runtime
@@ -26,38 +26,38 @@ services:
       - docker-compose.enc.env
 
     environment:
-      # CL-0020: Instructs Grafana to read its password from an internal temporary memory file path
+      # CL-0020: Instructs Grafana to read its password from an internal temporary memory file path [12]
       GF_SECURITY_ADMIN_PASSWORD_FILE: /tmp/.gfx_pwd
 
     entrypoint:
       - /bin/sh
       - -c
       - |
-        # Read the decoupled custom key variable from your env file and write it to RAM memory files
-        echo "$${SEC_DCD_GF_PASS}" > /tmp/.gfx_pwd
+        # Read the neutral config parameter key from your env file and write it to RAM memory files
+        echo "$${GF_STAGING_KEY}" > /tmp/.gfx_pwd
         # Wipe the temporary staging token instantly so process listings stay clear
-        unset SEC_DCD_GF_PASS
+        unset GF_STAGING_KEY
         # Hand over execution control back to the original container engine entrypoint script
         exec /run.sh
 
     volumes:
-      # Bypasses host NAS filesystem folder permission blocks using a named volume
+      # Bypasses host NAS filesystem folder permission blocks using a named volume [12]
       - grafana-storage:/var/lib/grafana
 
     tmpfs:
-      # Ephemeral memory locations supporting required write structures under read-only roots
+      # Ephemeral memory locations supporting required write structures under read-only roots [8]
       - /tmp
       - /run
       - /var/lib/grafana/tmp
 
     cap_drop:
-      # CL-0006: Strip all default Linux kernel privileges
+      # CL-0006: Strip all default Linux kernel privileges [3]
       - ALL
 
     deploy:
       resources:
         limits:
-          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS
+          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS [7]
           cpus: '0.50'
           memory: 512M
 
@@ -67,24 +67,24 @@ services:
     image: prom/prometheus:v3.1.0@sha256:f126da33fdf39ad61b17b6c7a72d47f9801b1a45749f7656cfdabc55ad3a3e0908c
     restart: unless-stopped
 
-    # CL-0018: Drop host-root privileges by running under the standard internal Prometheus user account
+    # CL-0018: Drop host-root privileges by running under the standard internal Prometheus user account [2]
     user: "65534:65534"
 
-    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors
+    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors [8]
     read_only: true
 
-    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups
+    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups [4]
     security_opt:
       - no-new-privileges:true
 
     ports:
-      # CL-0005: Bind port to localhost only; routes securely via Nginx Proxy Manager
+      # CL-0005: Bind port to localhost only; routes securely via Nginx Proxy Manager [5a]
       - "127.0.0.1:9090:9090"
 
     volumes:
       # Core configuration remains a read-only local mount reference
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      # Bypasses host NAS filesystem folder permission blocks using a named volume
+      # Bypasses host NAS filesystem folder permission blocks using a named volume [12]
       - prometheus-storage:/prometheus
 
     command:
@@ -94,17 +94,17 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
 
     tmpfs:
-      # Ephemeral memory location providing a writable scratch space
+      # Ephemeral memory location providing a writable scratch space [8]
       - /tmp
 
     cap_drop:
-      # CL-0006: Strip all default Linux kernel privileges
+      # CL-0006: Strip all default Linux kernel privileges [3]
       - ALL
 
     deploy:
       resources:
         limits:
-          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS
+          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS [7]
           cpus: '0.50'
           memory: 512M
 
@@ -112,6 +112,6 @@ services:
 # Volume declarations
 # ---------------------------------------------------------------
 volumes:
-  # Named storage allocations handled cleanly inside Docker's workspace area
+  # Named storage allocations handled cleanly inside Docker's workspace area [12]
   grafana-storage:
   prometheus-storage:
