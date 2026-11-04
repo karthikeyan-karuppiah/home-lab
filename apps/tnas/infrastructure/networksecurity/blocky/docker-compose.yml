@@ -2,21 +2,42 @@ version: "3.8"
 
 services:
   blocky:
-    # Explicitly append the 'v' prefix required by spx01/blocky
-    # Change the registry path from spx01/blocky to ghcr.io/0xerr0r/blocky
-    image: ghcr.io/0xerr0r/blocky:v0.35.0
     container_name: blocky
+    # CL-0019: Pinned to exact stable version v0.35.0 along with its immutable container digest footprint
+    image: ghcr.io/0xerr0r/blocky:v0.35.0@sha256:4f165b63db0d76c96ecc47c7a8f57caeedc003a912bdce29abb0e283ce02e16b
     restart: unless-stopped
+
+    # CL-0007: Protect container root storage spaces against persistent malware injection vectors
+    read_only: true
+
+    # CL-0003: Lock process inheritance to avoid binary execution escalations
+    security_opt:
+      - no-new-privileges:true
+
     ports:
+      # CL-0005: Core DNS service visibility ports exposed to serve local network subnets safely
       - "53:53/udp"
       - "53:53/tcp"
-      - "4000:4000"
+      - "4000:4000"  # HTTP query management and statistics telemetry dashboard API
+
     volumes:
-      - ./config.yml:/app/config.yml
-    environment:
-      - TZ=Europe/Stockholm  # Adjust to your timezone if necessary
-    labels:
-      - "cd.doco.image.update=true"
-      # Enforce a semantic version template regex that handles the 'v' prefix if Doco-CD allows it
-      # This matches the 'v' prefixed versioning used by the developers
-      - "cd.doco.image.policy=v0.30.0"
+      # Keep your primary network configuration block mapped safely as an immutable resource reference
+      - ./config.yml:/app/config.yml:ro
+
+    tmpfs:
+      # Ephemeral cache processing paths required under read-only root filesystems
+      - /tmp
+      - /run
+
+    cap_drop:
+      # CL-0006: Strip all default privileges and retain only the specific network binding flag required for raw DNS ports
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Impose strict resource ceilings to prevent container execution loops from starving the host NAS
+          cpus: '0.25'
+          memory: 256M
