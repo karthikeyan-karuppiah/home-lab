@@ -33,10 +33,10 @@ services:
       - /bin/sh
       - -c
       - |
-        # Capture the environment string and dump it to a volatile RAM file
-        echo "$${GF_SECURITY_ADMIN_PASSWORD}" > /tmp/.gfx_pwd
-        # Wipe the master environment token instantly so 'docker inspect' cannot leak it
-        unset GF_SECURITY_ADMIN_PASSWORD
+        # Read the decoupled custom key variable from your env file and write it to RAM memory files
+        echo "$${SEC_DCD_GF_PASS}" > /tmp/.gfx_pwd
+        # Wipe the temporary staging token instantly so process listings stay clear
+        unset SEC_DCD_GF_PASS
         # Hand over execution control back to the original container engine entrypoint script
         exec /run.sh
 
