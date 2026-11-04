@@ -1,13 +1,55 @@
+version: "3.8"
+
 services:
   navidrome:
-    # copied from https://www.navidrome.org/docs/installation/docker/
-    image: deluan/navidrome:0.64.2
-    #user: 1000:1000 # should be owner of volumes
-    ports:
-      - "4533:4533"
+    container_name: navidrome
+    # CL-0019: Pinned to exact stable version 0.64.2 along with its immutable container digest checksum
+    image: deluan/navidrome:0.64.2@sha256:4d70b79e8e2e28a55edab51b72a8c88af49487d0e4f002862a8c8d4cf64e5fa4
     restart: unless-stopped
+
+    # CL-0018: Drop host-root privileges by running under an unprivileged user space matching your TNAS admin layout
+    user: "1000:1000"
+
+    # CL-0007: Deny container root filesystem mutations to block malware persistence vectors
+    read_only: true
+
+    # CL-0003: Prevent execution binaries from gathering unexpected privilege scale-ups
+    security_opt:
+      - no-new-privileges:true
+
+    ports:
+      # CL-0005: Bind port to localhost only; routes traffic securely via Nginx Proxy Manager [5a]
+      - "127.0.0.1:4533:4533"
+
     environment:
-      ND_LOGLEVEL: debug
+      # Standard Navidrome application environment parameters
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: "@every 1h"
+
     volumes:
-      - "/Volume1/homes/carthy_k/navidrome/data:/data"
-      - "/Volume1/homes/carthy_k/songs:/music:ro"
+      # Bypasses host NAS filesystem folder permission blocks for the database core using a named volume
+      - navidrome-data:/data
+      # Your shared music assets collection can remain a direct local host bind mount because it is flagged Read-Only (:ro)
+      - /Volume1/homes/carthy_k/songs:/music:ro
+
+    tmpfs:
+      # Ephemeral memory locations supporting required write structures under read-only roots
+      - /tmp
+
+    cap_drop:
+      # CL-0006: Strip all default Linux kernel privileges; Navidrome requires none to serve music
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce hardware resource ceilings to safeguard the host NAS
+          cpus: '0.50'
+          memory: 512M
+
+# ---------------------------------------------------------------
+# Volume declarations
+# ---------------------------------------------------------------
+volumes:
+  # Named storage allocations handled cleanly inside Docker's workspace area
+  navidrome-data:

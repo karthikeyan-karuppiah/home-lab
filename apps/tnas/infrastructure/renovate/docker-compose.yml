@@ -1,6 +1,8 @@
+version: "3.8"
+
 services:
   renovate:
-    # Official Renovate image (pinned to a specific version for reproducibility)
+    # Official Renovate image (pinned to a specific stable version for reproducibility)
     image: renovate/renovate:44.198.3
     container_name: renovate
 
@@ -8,9 +10,15 @@ services:
     # This is a one-off job controlled by doco-cd, not a long-running service.
     restart: "no"
 
-    # Run as root (UID 0). Needed because some volume mounts and
-    # secret reading can have permission issues on TNAS otherwise.
-    user: "0:0"
+    # CL-0018: Drop host-root permissions by executing under an unprivileged user space
+    user: "1000:1000"
+
+    # CL-0007: Deny container file system mutations to prevent malware persistence
+    read_only: true
+
+    # CL-0003: Prevent child processes from gathering execution privileges
+    security_opt:
+      - no-new-privileges:true
 
     # Tell Docker Compose to mount the secret defined at the bottom
     secrets:
@@ -35,14 +43,13 @@ services:
       # Name + email that will appear on commits made by Renovate
       RENOVATE_GIT_AUTHOR: "Karthikeyan Karuppiah <your-github-email@example.com>"
 
-      # Leave empty here – the real token is injected at runtime from the secret.
-      # This avoids putting the credential into the process environment via Compose.
-      RENOVATE_TOKEN: ""
-
     volumes:
-      # Persist Renovate's cache so it doesn't re-download everything every run.
-      # Path is on the TNAS host.
-      - /Volume1/homes/carthy_k/renovate/cache:/usr/src/app/tmp
+      # Fix: Mount the named volume directly to the correct internal Renovate cache folder footprint
+      - renovate-cache:/tmp/renovate
+
+    tmpfs:
+      # Ephemeral memory paths providing write access fields required by the read-only layer root
+      - /tmp
 
     entrypoint:
       - /bin/sh
@@ -87,6 +94,10 @@ services:
         # "$$@" passes any extra arguments that might be given
         exec renovate "$$@"
 
+    cap_drop:
+      # CL-0006: Drop all default Linux kernel privileges; Renovate requires no capabilities to run
+      - ALL
+
     labels:
       # --- doco-cd job configuration ---
       # Enable this stack as a scheduled job
@@ -101,12 +112,23 @@ services:
       # If a previous run is still going, skip this one
       cd.doco.job.skip_running: "true"
 
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce resource ceilings to prevent container execution from starving the host NAS
+          cpus: '0.50'
+          memory: 512M
+
 # ---------------------------------------------------------------
 # Secret definition
 # ---------------------------------------------------------------
-# This points to the encrypted file that lives in your Git repo.
-# doco-cd will decrypt it automatically before starting the container
-# and mount the decrypted content at /run/secrets/renovate-token.
 secrets:
   renovate-token:
     file: ./renovate-token.sops.json
+
+# ---------------------------------------------------------------
+# Volume declaration
+# ---------------------------------------------------------------
+volumes:
+  # Declares the new named volume block layer managed completely by the Docker Engine
+  renovate-cache:
