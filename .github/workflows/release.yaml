@@ -53,7 +53,7 @@ jobs:
       # Because workflow_run evaluates independently, we must explicitly request the
       # artifact tied to the exact triggering run event (`github.event.workflow_run.id`).
       - name: Download Artifact from Triggering Pipeline
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: deployment-payload
           # Identifies the unique execution ID from Pipeline 1 that fired this event loop
@@ -72,7 +72,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Parses Conventional Commits (e.g., feat:, fix:) to automatically increment versions.
       - name: Run Release Please
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v4.4.1
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

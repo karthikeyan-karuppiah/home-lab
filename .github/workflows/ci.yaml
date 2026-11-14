@@ -61,7 +61,7 @@ jobs:
       # Uses verified release tags to handle core repository checkouts.
       # 'persist-credentials: false' keeps the local .git token secure from local scripts.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0
         with:
           # Fetches entire history, required for accurate commit scans (Gitleaks)
           fetch-depth: 0
@@ -115,7 +115,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Avoids pulling structural databases from the open web during every single run.
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@v4
+        uses: actions/cache@v4.3.0
         with:
           path: ~/.cache/trivy
           # Dynamic key maps to changes inside files containing "compose" or "Dockerfile"
@@ -127,7 +127,7 @@ jobs:
       # Linter Execution: YAML Analysis
       # -----------------------------------------------------------------------
       - name: Lint YAML files
-        uses: ibiqlik/action-yamllint@v3
+        uses: ibiqlik/action-yamllint@v3.1.1
         with:
           config_data: |
             extends: default
@@ -226,7 +226,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Evaluates all raw commits to confirm credentials or access keys weren't accidentally added.
       - name: Scan for leaked secrets (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -336,7 +336,7 @@ jobs:
       # -----------------------------------------------------------------------
       # Keeps scan outputs available for later review or release attachment.
       - name: Upload Trivy SBOMs and reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: trivy-image-scan-results
@@ -358,7 +358,7 @@ jobs:
 
       # Downstream Delivery: Securely upload the payload for Pipeline 2
       - name: Upload Deployment Payload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: deployment-payload
           path: build-dist/
