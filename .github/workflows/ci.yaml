@@ -37,6 +37,22 @@ permissions: {}
 
 jobs:
   # ===========================================================================
+  # Job: Supply-Chain Gate — GitHub Actions Lockfile Verification
+  # ===========================================================================
+  verify-lockfile:
+    name: Verify Actions Lockfile
+    runs-on: ubuntu-latest
+    # Fast fail-safe timeout for lockfile verification
+    timeout-minutes: 5
+
+    # Read-only repository access is all that is needed to verify actions.lock
+    permissions:
+      contents: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+  # ===========================================================================
   # Job: Static Analysis, Infrastructure, & Security Scans
   # ===========================================================================
   lint-and-scan:
