@@ -2,9 +2,9 @@
 # Pipeline 2: CD / Automated Release (Triggered by Pipeline 1)
 # =============================================================================
 # Core Architecture & Security Model:
-#   1. Event-Driven Chains: Uses workflow_run to connect disparate work scopes.
-#   2. Cross-Boundary Data Retrieval: Discovers and pulls historical workflow logs.
-#   3. Guardrails: Validates execution context outputs to prevent toxic data injection.
+#   1. Event-Driven Chains: Uses workflow_run to isolate privileged release tokens.
+#   2. Strict Origin Guardrails: Verifies push-only, same-repo, successful CI runs.
+#   3. Serialized Execution: Concurrency group prevents release-please tag races.
 # =============================================================================
 
 name: Release Management
@@ -14,12 +14,19 @@ name: Release Management
 # -----------------------------------------------------------------------------
 on:
   workflow_run:
-    # Must explicitly match the name property string of your primary pipeline file
+    # Must match the exact top-level `name:` field in .github/workflows/ci.yaml
     workflows: ["Continuous Integration"]
     types:
       - completed
     branches:
       - main
+
+# -----------------------------------------------------------------------------
+# Concurrency Management (Prevents Release-Please PR / Tag Race Conditions)
+# -----------------------------------------------------------------------------
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 # -----------------------------------------------------------------------------
 # Zero-Trust Global Permissions Matrix
@@ -33,61 +40,46 @@ jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-latest
+    # Fail-safe timeout to prevent hung API calls
+    timeout-minutes: 10
 
-    # Security Constraint:
-    # workflow_run fires when the target pipeline ends, REGARDLESS of whether it passed or failed.
-    # We must enforce a strict boolean check ensuring the CI run status was exactly 'success'.
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Security Constraint (Three-Part Origin & Status Gate):
+    # 1. Triggering CI workflow must have succeeded (`conclusion == 'success'`).
+    # 2. Triggering event must be a direct `push` to `main` (never a fork `pull_request`).
+    # 3. Head repository must match this repository (`head_repository.full_name == repository`).
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
 
-    # Grants write access to create code tags, releases, and automatically open PR changelogs
+    # Scoped permissions required by release-please to open release PRs and create GitHub Releases
     permissions:
       contents: write
       pull-requests: write
-      # Security: CRITICAL permission required to query historical pipeline runs
-      actions: read
 
     steps:
       # -----------------------------------------------------------------------
-      # Google Standard: Cross-Pipeline Download Resolution
-      # -----------------------------------------------------------------------
-      # Because workflow_run evaluates independently, we must explicitly request the
-      # artifact tied to the exact triggering run event (`github.event.workflow_run.id`).
-      - name: Download Artifact from Triggering Pipeline
-        uses: actions/download-artifact@v4.3.0
-        with:
-          name: deployment-payload
-          # Identifies the unique execution ID from Pipeline 1 that fired this event loop
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: fetched-payload
-
-      # Validate the payload contents safely to verify the structural integrity of transit.
-      - name: Verify Received Data
-        run: |
-          echo "=== Verifying Artifact Integrity ==="
-          cat fetched-payload/metadata.txt
-
-      # -----------------------------------------------------------------------
       # Semantic Versioning Release Core
       # -----------------------------------------------------------------------
-      # Parses Conventional Commits (e.g., feat:, fix:) to automatically increment versions.
+      # Parses Conventional Commits (e.g., feat:, fix:) via the GitHub API to
+      # maintain release PRs, CHANGELOG.md, and semantic Git tags.
       - name: Run Release Please
         uses: googleapis/release-please-action@v4.4.1
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # Points to the configuration files you already have set up
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
       # -----------------------------------------------------------------------
       # Output Logging and Reporting
       # -----------------------------------------------------------------------
-      # Google Standard: Uses brace encapsulation and standard file writers ('>>')
-      # to prevent dangerous script-injection opportunities within echo contexts.
+      # Uses brace encapsulation and standard file writers ('>>')
+      # to prevent script-injection opportunities within echo contexts.
       - name: Post-release summary
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         run: |
+          set -euo pipefail
           {
             echo "### 🚀 New Release Created"
             echo "- Version: \`${{ steps.release.outputs.tag_name }}\`"

@@ -1,3 +1,4 @@
+name: Continuous Integration
 # Event Triggers (Webhook Configuration)
 # -----------------------------------------------------------------------------
 on:
