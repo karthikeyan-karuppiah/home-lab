@@ -98,17 +98,18 @@ A streaming server subsystem compliant with Subsonic/Madsonic API specifications
 
 The host operating system kernel rules enforce strict port boundaries. Only the WireGuard ingress port is mapped to your perimeter gateway.
 
-| Subsystem Component | Container Port | Host Port | Network Layer | Boundary / Purpose |
-| :--- | :--- | :--- | :--- | :--- |
-| **WireGuard Ingress** | `51820/udp` | `51820` | Layer 4 (UDP) | Mapped Gateway Cryptographic Entry |
-| **WireGuard UI** | `51821/tcp` | `51821` | Layer 7 (HTTP) | Internal Peer Management Portal |
-| **Blocky DNS Proxy** | `53/udp` | `53` | Layer 4 (UDP) | Internal Network Resolution Ingress |
-| **Blocky DNS Proxy** | `53/tcp` | `53` | Layer 4 (TCP) | Internal Fallback TCP Resolution |
-| **Blocky API & Metrics** | `4000/tcp` | `4000` | Layer 7 (HTTP) | Health Check / Telemetry Endpoint |
-| **Nginx Proxy Manager** | `80/tcp` | `8080` | Layer 7 (HTTP) | Local Hostname Routing Engine (`music.home`) |
-| **Nginx UI Dashboard** | `81/tcp` | `81` | Layer 7 (HTTP) | Internal Proxy Rules Configuration |
-| **Nginx Secure Ingress** | `443/tcp` | `8443` | Layer 7 (HTTPS)| Mapped for Local SSL Security Layers |
-| **Navidrome Engine** | `4533/tcp` | `4533` | Layer 7 (HTTP) | Dedicated Media Core Backend Ingress |
+| Subsystem Component       | Container Port | Host Port | Network Layer  | Boundary / Purpose                              |
+| :------------------------ | :------------- | :-------- | :------------- | :---------------------------------------------- |
+| **WireGuard Ingress**     | `51820/udp`    | `51820`   | Layer 4 (UDP)  | Mapped Gateway Cryptographic Entry              |
+| **WireGuard UI**          | `51821/tcp`    | `51821`   | Layer 7 (HTTP) | Internal Peer Management Portal                 |
+| **Blocky DNS Proxy**      | `53/udp`       | `53`      | Layer 4 (UDP)  | Internal Network Resolution Ingress             |
+| **Blocky DNS Proxy**      | `53/tcp`       | `53`      | Layer 4 (TCP)  | Internal Fallback TCP Resolution                |
+| **Blocky API & Metrics**  | `4000/tcp`     | `4000`    | Layer 7 (HTTP) | Health Check / Telemetry Endpoint               |
+| **Nginx Proxy Manager**   | `80/tcp`       | `8080`    | Layer 7 (HTTP) | Local Hostname Routing Engine                   |
+| **Nginx UI Dashboard**    | `81/tcp`       | `81`      | Layer 7 (HTTP) | Internal Proxy Rules Configuration              |
+| **Nginx Secure Ingress**  | `443/tcp`      | `8443`    | Layer 7 (HTTPS)| Mapped for Local SSL Security Layers            |
+| **Authelia**              | `9091/tcp`     | —         | Layer 7 (HTTP) | Internal only (reached via NPM)                 |
+| **Navidrome Engine**      | `4533/tcp`     | `4533`    | Layer 7 (HTTP) | Dedicated Media Core Backend Ingress            |
 
 ---
 

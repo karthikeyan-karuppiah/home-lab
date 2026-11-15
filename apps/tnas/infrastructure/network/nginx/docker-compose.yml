@@ -1,14 +1,62 @@
 version: "3.8"
 
+# ==============================================================================
+# Nginx Proxy Manager
+# Location: apps/tnas/infrastructure/network/nginx/docker-compose.yml
+# ==============================================================================
+# This is the central reverse proxy of your home lab.
+# It receives all requests (music.home, auth.home, etc.) and decides
+# where to send them.
+#
+# With Authelia, NPM will also ask Authelia for permission
+# before forwarding traffic to protected applications.
+#
+# This stack is the "owner" of the shared "proxy" network.
+# ==============================================================================
+
 services:
   nginx-proxy-manager:
     image: jc21/nginx-proxy-manager:latest
     container_name: nginx-proxy-manager
     restart: unless-stopped
+
     ports:
-      - "8080:80"        # Mapped to listen for raw HTTP web requests
-      - "81:81"        # Mapped to expose the configuration dashboard admin screen
-      - "8443:443"      # Mapped to process secure local SSL/HTTPS data channels
+      # These ports are mapped to the host so you can reach NPM
+      # even before you are connected via WireGuard (useful for setup).
+      # HTTP
+      - "8080:80"
+      # Admin UI
+      - "81:81"
+      # HTTPS
+      - "8443:443"
+
     volumes:
+      # Persistent data (proxy hosts, certificates, settings)
       - /Volume1/DockerAppsData/nginx-proxy/data:/data
+
+      # Let's Encrypt certificates (even if you only use them internally)
       - /Volume1/DockerAppsData/nginx-proxy/letsencrypt:/etc/letsencrypt
+
+    # --------------------------------------------------------------------------
+    # Network Configuration
+    # --------------------------------------------------------------------------
+    # Attach NPM to the shared "proxy" network so it can communicate
+    # with Authelia using the container name "authelia".
+    networks:
+      - proxy
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+# This stack creates the shared "proxy" network.
+# Because "external: true" is NOT set, Docker Compose will automatically
+# create the network named "proxy" if it does not already exist.
+#
+# Other services (Authelia, future apps) will join this network
+# by declaring it as external: true.
+# ==============================================================================
+networks:
+  proxy:
+    # Forces the exact network name "proxy"
+    name: proxy
+    driver: bridge

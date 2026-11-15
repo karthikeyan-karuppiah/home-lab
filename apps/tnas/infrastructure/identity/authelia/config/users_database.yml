@@ -1,0 +1,31 @@
+# ==============================================================================
+# Authelia Users Database
+# File: /Volume1/DockerAppsData/authelia/config/users_database.yml
+# ==============================================================================
+# This file contains all users who are allowed to log in.
+# It is the simplest way to manage users in a home lab.
+#
+# IMPORTANT:
+# Never put plain-text passwords here.
+# Always generate an Argon2id hash.
+# ==============================================================================
+
+users:
+
+  # --------------------------------------------------------------------------
+  # Your main admin user
+  # --------------------------------------------------------------------------
+  karthikeyan:                          # ← This is the username you type at login
+    disabled: false                     # Set to true to temporarily disable the account
+    displayname: 'Karthikeyan'          # Friendly name shown in the UI
+    email: you@example.com              # Used for future notifications
+
+    # Password hash (Argon2id)
+    # Generate it with this command:
+    # docker run --rm authelia/authelia:4.39 \
+    #   authelia crypto hash generate argon2 --password 'YourStrongPassword'
+    password: 'REPLACE_WITH_THE_FULL_ARGON2_HASH'
+
+    # Groups control access later if you want more advanced rules
+    groups:
+      - admins

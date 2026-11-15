@@ -14,7 +14,7 @@ services:
     volumes:
       - ./config.yml:/app/config.yml
     environment:
-      - TZ=Europe/Stockholm  # Adjust to your timezone if necessary
+      - TZ=Europe/Stockholm
     labels:
       - "cd.doco.image.update=true"
       # Enforce a semantic version template regex that handles the 'v' prefix if Doco-CD allows it

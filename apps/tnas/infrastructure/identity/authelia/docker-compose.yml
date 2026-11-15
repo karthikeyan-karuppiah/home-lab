@@ -1,0 +1,89 @@
+# ==============================================================================
+# Authelia + Redis Stack
+# Location: apps/tnas/infrastructure/identity/authelia/docker-compose.yml
+# ==============================================================================
+# This stack provides Single Sign-On (SSO) and Two-Factor Authentication (2FA)
+# for all services behind Nginx Proxy Manager.
+#
+# Architecture role:
+#   WireGuard → Blocky → Nginx Proxy Manager → Authelia → Application (Navidrome)
+#
+# Authelia acts as the gatekeeper. NPM asks Authelia "Is this user allowed?"
+# before forwarding traffic to any protected application.
+# ==============================================================================
+
+services:
+
+  # --------------------------------------------------------------------------
+  # Authelia - Authentication & Authorization Server
+  # --------------------------------------------------------------------------
+  authelia:
+    # Official Authelia image. We pin to a major version (4.39).
+    # Renovate will later open PRs when new versions appear.
+    image: authelia/authelia:4.39
+
+    container_name: authelia
+    restart: unless-stopped
+
+    # All configuration lives in this volume.
+    # On the NAS this path becomes permanent storage.
+    volumes:
+      - /Volume1/DockerAppsData/authelia/config:/config
+
+    # We put Authelia on the same Docker network as Nginx Proxy Manager
+    # so they can talk to each other using the container name "authelia".
+    networks:
+      - proxy
+
+    environment:
+      # Set your local timezone (important for logs and TOTP)
+      TZ: Europe/Stockholm
+
+    # --------------------------------------------------------------------------
+    # Healthcheck
+    # --------------------------------------------------------------------------
+    # This makes Authelia more patient during startup.
+    # If the "proxy" network is not ready yet (NPM still starting),
+    # Authelia will keep retrying instead of failing permanently.
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9091/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # --------------------------------------------------------------------------
+  # Redis - Session Storage
+  # --------------------------------------------------------------------------
+  # Authelia needs a place to store active login sessions.
+  # Redis is fast and lightweight. We keep it simple for home use.
+  redis:
+    image: redis:7-alpine
+    container_name: authelia-redis
+    restart: unless-stopped
+
+    # Save data to disk every 60 seconds if at least 1 key changed
+    command: redis-server --save 60 1 --loglevel warning
+
+    volumes:
+      - /Volume1/DockerAppsData/authelia/redis:/data
+
+    networks:
+      - proxy
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+# We join the existing "proxy" network that is created by the
+# Nginx Proxy Manager stack.
+#
+# Because "external: true" is set, Docker Compose will NOT try to create
+# the network — it expects it to already exist (created by NPM).
+#
+# Combined with the healthcheck and restart policy above, this gives
+# reliable startup even if Authelia starts a few seconds before NPM.
+# ==============================================================================
+networks:
+  proxy:
+    external: true
+    name: proxy

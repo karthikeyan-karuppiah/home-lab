@@ -6,7 +6,7 @@ services:
         environment:
             - PUID=0
             - PGID=0
-            - TZ=Europe/Brussels
+            - TZ=Europe/Stockholm
             - LANG=en
             # REMOVED THE BROKEN ${WG_HOST} LINES FROM HERE
         volumes:
