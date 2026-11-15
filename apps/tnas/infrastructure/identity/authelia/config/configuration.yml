@@ -73,12 +73,13 @@ access_control:
 
   rules:
     # The Authelia login page itself must be reachable without authentication
-    - domain: 'auth.home'
+    - domain: 'auth.home.lab'
       policy: 'bypass'
 
-    # Everything else under *.home requires full two-factor authentication
-    - domain: '*.home'
-      policy: 'two_factor'     # Options: bypass | one_factor | two_factor
+    # Everything else under *.home.lab requires full two-factor authentication
+    - domain: '*.home.lab'
+      # Options: bypass | one_factor | two_factor
+      policy: 'two_factor'
 
 # --------------------------------------------------------------------------
 # Session Settings
@@ -94,9 +95,17 @@ session:
   inactivity: '2h'       # Logout after 2 hours of no activity
 
   cookies:
-    - domain: 'home'                           # Root domain for the cookie
-      authelia_url: 'https://auth.home'        # Where the login page lives
-      default_redirection_url: 'https://music.home'  # Where to go after login
+    # Root domain for the cookie
+    - domain: 'home.lab'
+      # Where the login page lives
+      authelia_url: 'https://home.lab'
+      # Where to go after login
+      default_redirection_url: 'https://home.lab'
+
+  # Connect to the Redis container for persistent session storage
+  redis:
+    host: 'authelia-redis'
+    port: 6379
 
 # --------------------------------------------------------------------------
 # Brute-force Protection
