@@ -14,7 +14,6 @@ workflows:
     '.github/workflows/pr-lint.yml':
         - 'amannn/action-semantic-pull-request@v5'
     '.github/workflows/release.yaml':
-        - 'actions/download-artifact@v4.3.0'
         - 'googleapis/release-please-action@v4.4.1'
 dependencies:
     'actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb':
@@ -37,11 +36,6 @@ dependencies:
         commit: 'sha1-11d5960a326750d5838078e36cf38b85af677262'
         owner_id: 44036562
         repo_id: 197814629
-    'actions/download-artifact@v4.3.0':
-        ref: 'v4.3.0'
-        commit: 'sha1-d3f86a106a0bac45b974a628896c90dbdf5c8093'
-        owner_id: 44036562
-        repo_id: 192626254
     'actions/upload-artifact@v4.6.2':
         ref: 'v4.6.2'
         commit: 'sha1-ea165f8d65b6e75b540449e92b4886f43607fa02'
