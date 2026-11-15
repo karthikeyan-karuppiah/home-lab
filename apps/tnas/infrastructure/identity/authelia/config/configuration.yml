@@ -1,0 +1,137 @@
+# ==============================================================================
+# Authelia Main Configuration
+# File: config/configuration.yml
+# ==============================================================================
+# This is the brain of Authelia.
+# Almost every security decision is controlled from this file.
+#
+# Secrets (session secret, storage encryption key, JWT secret, password hash)
+# are loaded from environment variables via secrets.enc.env
+# ==============================================================================
+
+# --------------------------------------------------------------------------
+# Server Settings
+# --------------------------------------------------------------------------
+server:
+  # Authelia listens only inside the Docker network on port 9091.
+  # We never expose this port to the host or the internet.
+  address: 'tcp://:9091'
+
+# --------------------------------------------------------------------------
+# Logging
+# --------------------------------------------------------------------------
+log:
+  # Possible values: trace, debug, info, warn, error
+  # "info" is good for normal use. Change to "debug" when troubleshooting.
+  level: 'info'
+
+# --------------------------------------------------------------------------
+# TOTP (Authenticator App) Settings
+# --------------------------------------------------------------------------
+totp:
+  # This name appears in your Authenticator app (Google Authenticator, Aegis, etc.)
+  issuer: 'home.lab'
+  period: 30          # Standard 30-second codes
+  skew: 1             # Allows 1 period of clock drift
+
+# --------------------------------------------------------------------------
+# WebAuthn / Passkeys (Recommended modern 2FA)
+# --------------------------------------------------------------------------
+webauthn:
+  disable: false
+  display_name: 'Home Lab'
+  attestation_conveyance_preference: indirect
+  user_verification: preferred
+  timeout: 60s
+
+# --------------------------------------------------------------------------
+# Authentication Backend (Where users are stored)
+# --------------------------------------------------------------------------
+# We use a simple file-based backend. Perfect for home labs.
+authentication_backend:
+  file:
+    path: '/config/users_database.yml'
+
+    # Password hashing settings (Argon2id is currently the strongest practical choice)
+    password:
+      algorithm: 'argon2id'
+      argon2:
+        variant: 'argon2id'
+        iterations: 3
+        memory: 65536        # 64 MB
+        parallelism: 4
+        key_length: 32
+        salt_length: 16
+
+# --------------------------------------------------------------------------
+# Access Control Rules (The most important section)
+# --------------------------------------------------------------------------
+# This decides WHO can access WHAT and with HOW MUCH security.
+access_control:
+  # If no rule matches → deny everything (safe default)
+  default_policy: 'deny'
+
+  rules:
+    # The Authelia login page itself must be reachable without authentication
+    - domain: 'auth.home'
+      policy: 'bypass'
+
+    # Everything else under *.home requires full two-factor authentication
+    - domain: '*.home'
+      policy: 'two_factor'     # Options: bypass | one_factor | two_factor
+
+# --------------------------------------------------------------------------
+# Session Settings
+# --------------------------------------------------------------------------
+session:
+  name: 'authelia_session'
+
+  # The session secret is loaded from the environment variable:
+  # AUTHELIA_SESSION_SECRET (from secrets.enc.env)
+  # Do NOT put the real secret here.
+
+  expiration: '12h'      # How long a session lives
+  inactivity: '2h'       # Logout after 2 hours of no activity
+
+  cookies:
+    - domain: 'home'                           # Root domain for the cookie
+      authelia_url: 'https://auth.home'        # Where the login page lives
+      default_redirection_url: 'https://music.home'  # Where to go after login
+
+# --------------------------------------------------------------------------
+# Brute-force Protection
+# --------------------------------------------------------------------------
+regulation:
+  max_retries: 5         # After 5 wrong attempts...
+  find_time: '2m'        # ...within 2 minutes...
+  ban_time: '15m'        # ...ban the IP for 15 minutes
+
+# --------------------------------------------------------------------------
+# Storage (Database)
+# --------------------------------------------------------------------------
+# We use a simple SQLite file. Perfect for home use.
+storage:
+  # The encryption key is loaded from the environment variable:
+  # AUTHELIA_STORAGE_ENCRYPTION_KEY (from secrets.enc.env)
+  # Do NOT put the real key here.
+
+  local:
+    path: '/config/db.sqlite3'
+
+# --------------------------------------------------------------------------
+# Notifications
+# --------------------------------------------------------------------------
+# For home use we just write notifications to a file.
+# Later you can switch to SMTP (email) if you want password reset emails.
+notifier:
+  filesystem:
+    filename: '/config/notification.txt'
+
+# --------------------------------------------------------------------------
+# Identity Validation (JWT)
+# --------------------------------------------------------------------------
+identity_validation:
+  reset_password:
+    # JWT secret is loaded from the environment variable:
+    # AUTHELIA_JWT_SECRET (from secrets.enc.env)
+    jwt_secret: '{{ env "AUTHELIA_JWT_SECRET" }}'

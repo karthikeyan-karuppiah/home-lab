@@ -2,11 +2,12 @@ services:
     wg-easy:
         container_name: wg-easy
         env_file:
-            - docker-compose.enc.env # Doco-CD decrypts this and injects the keys directly
+            # Doco-CD decrypts this and injects the keys directly
+            - docker-compose.enc.env
         environment:
             - PUID=0
             - PGID=0
-            - TZ=Europe/Brussels
+            - TZ=Europe/Stockholm
             - LANG=en
             # REMOVED THE BROKEN ${WG_HOST} LINES FROM HERE
         volumes:
