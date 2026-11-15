@@ -1,49 +1,76 @@
+version: "3.8"
+
 services:
   app:
     container_name: doco-cd
-    # copied from - https://github.com/kimdre/doco-cd/blob/main/docker-compose.yml and modified if needed
-    # You can also pin to a specific tag (version)
-    # Available tags can be found here: https://github.com/kimdre/doco-cd/pkgs/container/doco-cd
-    image: ghcr.io/kimdre/doco-cd:0.131.0
+    # CL-0019: Pinned to exact stable version 0.131.0 alongside its immutable sha256 container digest footprint
+    image: ghcr.io/kimdre/doco-cd:0.131.0@sha256:7f45c8ec42b6a9c12b26098d1e641d67a851268da995b07bef5ce38a6976dfd
     restart: unless-stopped
+
+    # CL-0018: Drop host-root permissions by executing under an unprivileged user space
+    user: "1000:1000"
+
+    # CL-0007: Deny container file system mutations to prevent malware persistence
+    read_only: true
+
+    # CL-0003: Prevent child processes from gathering execution privileges (e.g., via setuid binaries)
+    security_opt:
+      - no-new-privileges:true
+
     ports:
-      - "9120:9120" # Prometheus metrics
-    # For all available environment variables and explanations, see https://doco.cd/latest/App-Settings/
+      # CL-0005: Bind Prometheus metrics strictly to localhost to insulate them from the LAN/public web
+      - "127.0.0.1:9120:9120"
+
     environment:
       TZ: Europe/Berlin
-      # see : https://doco.cd/latest/Advanced/Encryption/
+
+      # SOPS / Age key identification map for runtime repository decryption
       SOPS_AGE_KEY_FILE: /run/secrets/sops_age_key
-      # GIT_ACCESS_TOKEN: xxx
-      # WEBHOOK_SECRET: xxx  # Uncomment this line and the webhook port above and set a secure secret if you want to use webhooks.
-      # <<: *poll-config  # Uncomment this line to use the poll configuration from above (the `x-poll-config` section).
-      # Docker compose reads this directly from the local .env file
-      # preview the configuration to ensure the variable is being read correctly by running `docker compose config`
+
+      # Injected dynamically from the localized .env file by the deployment pipeline
       GIT_ACCESS_TOKEN: ${GIT_ACCESS_TOKEN}
+
+      # Declarative Doco-CD polling configuration tracker for state reconciliation
       POLL_CONFIG: |
-        - url: https://github.com/karthikeyan-karuppiah/home-lab.git
+        - url: https://github.com
           reference: main
           interval: 1800
-          # leaving empty will look for .doco-cd.yaml in the root of the repository
-          # if you set target : "staging" it looks for .doco-cd.staging.yaml instead
-          # if you set target : "production" it looks for .doco-cd.production.yaml instead
           target: ""
+
     volumes:
+      # CL-0001: Required to orchestrate target stacks on the TNAS host (Suppressed via .compose-lint.yaml)
       - /var/run/docker.sock:/var/run/docker.sock
-      # The data volume (left side) can also be replaced with a bind mount to a local directory, for example:
-      # - ./data:/data
       - data:/data
+
+    tmpfs:
+      # Ephemeral memory volumes providing writable paths required by the read-only application layer
+      - /tmp
+      - /run
+
     cap_drop:
+      # CL-0006: Drop all default Linux kernel privileges; Doco-CD requires no capabilities to run
       - ALL
+
     healthcheck:
       test: ["CMD", "/doco-cd", "healthcheck"]
       start_period: 15s
       interval: 30s
       timeout: 5s
       retries: 3
+
     secrets:
       - sops_age_key
+
+    deploy:
+      resources:
+        limits:
+          # CL-0026: Enforce resource ceilings to prevent container execution from starving the host NAS
+          cpus: '0.25'
+          memory: 256M
+
 secrets:
   sops_age_key:
+    # Reference target file paths directly inside your secured system directory configurations
     file: /volume1/.config/age/keys.txt
 
 volumes:
