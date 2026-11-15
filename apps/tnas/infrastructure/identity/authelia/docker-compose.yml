@@ -96,11 +96,24 @@ services:
 # Mount configuration files directly from the Git repository checked out by
 # doco-cd, overriding any empty/default files in the persistent NAS volume.
 # ==============================================================================
+# ==============================================================================
+# Why users_database.enc.yml is SOPS-Encrypted
+# ==============================================================================
+# 1. No Template Engine: Authelia's X_AUTHELIA_CONFIG_FILTERS: template only
+#    processes configuration.yml—it reads users_database.yml as raw YAML,
+#    so {{ env "USER_PASSWORD_HASH" }} is treated as a literal invalid hash.
+# 2. Git Security: Committing unencrypted user files exposes PII (emails,
+#    usernames) and allows offline brute-forcing of Argon2id password hashes.
+# 3. GitOps Workflow: Encrypting users_database.enc.yml with SOPS lets us
+#    safely store real password hashes in Git while doco-cd automatically
+#    decrypts the file into /config/users_database.yml at deployment time.
+# ==============================================================================
+
 configs:
   authelia_config:
     file: ./config/configuration.yml
   authelia_users:
-    file: ./config/users_database.yml
+    file: ./config/users_database.enc.yml
 
 # ==============================================================================
 # Networks

@@ -1,0 +1,36 @@
+#ENC[AES256_GCM,data:3kHkeYGrgQJtG/RrdeYPhaE/xOSpcY7EqNROoBZ07SW2i06/6KqcZHKipcmqLdERD1LdipgNPHfhFhjE2jVerbN/5kBMYh6l8FdyDaX/0g==,iv:MPCSOmHbetU1OkfNQKdI3NvNnN9qXaqvsiYfK5NHd8M=,tag:0uf6Zak+Eu+zjrJnchAYLA==,type:comment]
+#ENC[AES256_GCM,data:iYe5tK9f+KY/Tqh8NMsBsxHzuHfx0qVF,iv:Zut7kmS7G043BjiTsC3RxuoVa2GpcwsyuE9G+UTMzyw=,tag:tLAkw+IY1NsTDF1rtXTa3g==,type:comment]
+#ENC[AES256_GCM,data:CAD1FH2K/AR4wsPXYZJ6yeP7MdIkabNIRjCQ37UnaA4=,iv:P1Z3e52RR4qeDp+YmxR/Tq6GM/mvZQJ4beRfXtNyvYo=,tag:bhMwWBUA3qxXmeotH7edxQ==,type:comment]
+#ENC[AES256_GCM,data:Wt1WZiLgrJFmz0lox6CwNY5wYB/vHOrB6htRaDGrrVC4kw7QnZqoSRnxOCk6qEcwZfz9CDRaLugm4rBq4ywDf90FbGJ7CuT91lSpk1WzuQ==,iv:LY9PunO1YLPkmXKPXiryJgN110pAizSJJOo1081caaQ=,tag:tYENKFk0Ap4YJCvMBHj63A==,type:comment]
+#ENC[AES256_GCM,data:oxxVWx2bN4zis/4phOca9hqGWgYZdP159MY3u4X2+F1vHm3A103jjVIcpS86Evg3QLNiom7ah5WJp+wCdH8u9mib+uS4x+JsV32M,iv:kC9VJSDiMxrtYFVp8zQTyi5asH3XhUHE2mo9g6r9ins=,tag:+z3XoThkIquohH/X+a4zAQ==,type:comment]
+#ENC[AES256_GCM,data:ymw0AuEO99h2oO0L7/MHLcNxOjNa94yuqPGBpAto,iv:8EzVa3xwFa2ctnP92QviVBXIHWVeLs5wUHJe6hFmQ+Q=,tag:cm/MfsJDZmZArfUwT3/18g==,type:comment]
+#ENC[AES256_GCM,data:2//yPsF2c30dQ8GgiZ8u0WW/vDaHfrjPNL7VlKj2nTFbl0T7Fe7L4dL1vROSMHOpkqjFGHkQlkjV9+8KhCRmkf7cEpMVDn2cSdRR,iv:AKze37N9jpBWPttlIB5ViiYGyMpsw+NKjENcPliEra4=,tag:eAqSZliL+Btj9HWlyE9F4g==,type:comment]
+#ENC[AES256_GCM,data:exikIZy/chPLvw6v7cr41hVRydQHG2RmXsOWUxCph99IR+1ya1j/G4Yk4yXlej4jYFVh,iv:ClDlN2IhkXr4Yh0nCP9HPIro6iiCh4OcTfoO8fo/RgA=,tag:XnhgfU7CO7oKTr0iYezQRw==,type:comment]
+#ENC[AES256_GCM,data:A3xpJE9bkZb8kDo7LMZ2,iv:y/OgGsMvQqBfny3TaEwJ0taX/B8fQ5OXMYVdWk3XSaQ=,tag:hCWc2TFwMWgJTdMp5QJxYw==,type:comment]
+#ENC[AES256_GCM,data:um/a9kKUNpfYFxp5BLACPCyhaQHrq0emcvZkKg4DskZanPNwmNUnhgQ3OQ==,iv:anjlHd3o2ZDOzaL2at5LZ9wqUTTsj7TUkpcis6vIDdA=,tag:6o98ssV5d2CeqzzTQat2XQ==,type:comment]
+#ENC[AES256_GCM,data:DCCA9QyNmJKLKcYtetA+fm8WMKAExIsFHoLKmUawNQerAWu2kPY5i4ZvxbeAYcK8xoCJNMVF0QEpvTKO9oFBBnjFeijaItAZCw==,iv:pwj57P1qbeDy76beplkUat1UXgrTgZkfLBbdZUqBV7g=,tag:RjRTLsSCH0VSHWLxv6Sopg==,type:comment]
+#
+#ENC[AES256_GCM,data:AlUs9tDFKKAIIde+rPtoIYOoCe0EA0gtdppRKnXALYewN4S+iWJv4rUPAaF0jnLvx6CDLCCesAaxeEZvGu2ZjeiBL/bpVss=,iv:NM+ANOtRrih2+ePCKdQKUKSBN+BaR3CicMxd9qGlqpA=,tag:byLVNoDOdrKhlXEEIvURJw==,type:comment]
+users:
+    karthikeyan:
+        disabled: ENC[AES256_GCM,data:WNZiXUU=,iv:7Bj5RSGhI35V/vCWq3Aoc3k1a4e3Y+YCMGEXYDnRZsA=,tag:XUmaDTnvaI5iTq1ygCsNCA==,type:bool]
+        displayname: ENC[AES256_GCM,data:zSR++ykag5m/YPo=,iv:YOQzFgcbSrN2w6wLuLcxRbvYRwvMNfgkOUelQDbdv4Y=,tag:A7f5IjyN/65QRZbLo3rhQQ==,type:str]
+        email: ENC[AES256_GCM,data:aUWquH5+bE9n/ZGIh2lG7sFy,iv:hpxmVtL9sEnoOfalNCtP+ExRGZ/XgbBDTzpqo9Td9ks=,tag:qGe1YPDOGNfBB2m1qIHkbw==,type:str]
+        password: ENC[AES256_GCM,data:XvKgZAGCkq77rr1AjZQnwEOUPb8PylnLA0WAirlsRnMIAc2M3+AZX+Kal7bz5k7yiV+0fkvihrDLZaoVbTrcfISbOmp773x7twbjZtI8niEe20xCpyTP0uVU/F0PvZYYFQ==,iv:5lasjkVU8ij11ZKSMzlAS6n3bXXW3O2rLPVI1k13Z8g=,tag:xcaeQK8/HRP08MEdWX8Fbw==,type:str]
+        groups:
+            - ENC[AES256_GCM,data:/VKg6H37,iv:+Qemh6nyayFhjE6+pBNVNaOHWquF6MAu8Vkme24dWUo=,tag:Lgnn3kY+gH18JZzJQmJbaQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBFWm95U1Vzc0Y2Rlg1WnI2
+            ZUxVbHlVaE9zUWJVa3RBR3JGYzJDZGRlamlrCk41SGVIRlBkSEprcVpMWWFWaGVH
+            QzBQSkVjR2J1REVvZjM2YnpYR0h2UW8KLS0tIG9hTEJYMElmNVZOR3hSbEh6N00x
+            eXp2UEtEMURrQVpqTlllWllibDZFNEEKJWGmdJFOeLsu/K0lEpynG71AAO8nP2XJ
+            ybwxMkZHReJSwlPgnFk3NtaO0dpPITcVatv/eu0+OUAvuKVYvvE0Mw==
+            -----END AGE ENCRYPTED FILE-----
+           recipient: age1f7thksspqrgn0l7kd4h0p6rhrh2k97xzw7vr9j8h0qgztumlgfusx0fa3f
+    lastmodified: "2026-11-15T17:46:03Z"
+    mac: ENC[AES256_GCM,data:STqiD+o/alFt5UOd3pHeyeQaSOVJH/e6gvM19owi5NzaGML9E/liunWviUvmrORKSd9ofIHaDimEOWWdhVYIM+ERJur6caUW2Ogf24Vpo2CD4U8sdE+hQRxmAH3eUUDoaE32cTILEYFVEqaIWFHDTsvRzxBqXbeWwSpu92AIE1M=,iv:1pyoVcT1o/PfZOMOv7CMo6c1hgFxDVh3ttCVnLccdzw=,tag:YOFyvRsy0agPsGhRJRnBNA==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.13.1
