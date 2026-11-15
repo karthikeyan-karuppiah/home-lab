@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.4](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.3...v1.1.4) (2026-11-15)
+
+
+### Documentation
+
+* add MIT license ([a22d87e](https://github.com/karthikeyan-karuppiah/home-lab/commit/a22d87ef8d98c913276f1be51697cc01acf3713f))
+* fix GitHub Actions (ci & release) status badges in README ([33dc5eb](https://github.com/karthikeyan-karuppiah/home-lab/commit/33dc5eba1d39e746e142ed95c3d67cdd81d14b8f))
+* fix GitHub Actions status badges in README ([5c356c9](https://github.com/karthikeyan-karuppiah/home-lab/commit/5c356c971fb4227ff1de771b5806ce4959b3ca14))
+* fix GitHub Actions status badges in README ([8e1ace3](https://github.com/karthikeyan-karuppiah/home-lab/commit/8e1ace3590e88760a490f76e83f96c3010c6d888))
+
+
+### Miscellaneous Chores
+
+* **deps:** enforce container digest pinning and release age cooldown in renovate ([222d0ed](https://github.com/karthikeyan-karuppiah/home-lab/commit/222d0ed2935594328067298bee6ea64463f24a7e))
+* **security:** redact personal DuckDNS domain and NAS paths ([0ffe8e2](https://github.com/karthikeyan-karuppiah/home-lab/commit/0ffe8e2bcb271d8eb8623ddc68679d9dfed7aebc))
+
 ## [1.1.3](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.2...v1.1.3) (2026-10-31)
 
 
