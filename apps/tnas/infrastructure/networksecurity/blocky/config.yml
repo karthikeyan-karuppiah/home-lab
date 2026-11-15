@@ -43,6 +43,8 @@ ports:
 customDNS:
   mapping:
     music.home: 192.168.1.110
+    music.home.lab: 192.168.1.110
+    auth.home.lab: 192.168.1.110
 
 # Add this block to allow Prometheus to pull metrics
 prometheus:
