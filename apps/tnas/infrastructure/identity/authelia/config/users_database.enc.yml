@@ -29,7 +29,7 @@ sops:
             eXp2UEtEMURrQVpqTlllWllibDZFNEEKJWGmdJFOeLsu/K0lEpynG71AAO8nP2XJ
             ybwxMkZHReJSwlPgnFk3NtaO0dpPITcVatv/eu0+OUAvuKVYvvE0Mw==
             -----END AGE ENCRYPTED FILE-----
-           recipient: age1f7thksspqrgn0l7kd4h0p6rhrh2k97xzw7vr9j8h0qgztumlgfusx0fa3f
+          recipient: age1f7thksspqrgn0l7kd4h0p6rhrh2k97xzw7vr9j8h0qgztumlgfusx0fa3f
     lastmodified: "2026-11-15T17:46:03Z"
     mac: ENC[AES256_GCM,data:STqiD+o/alFt5UOd3pHeyeQaSOVJH/e6gvM19owi5NzaGML9E/liunWviUvmrORKSd9ofIHaDimEOWWdhVYIM+ERJur6caUW2Ogf24Vpo2CD4U8sdE+hQRxmAH3eUUDoaE32cTILEYFVEqaIWFHDTsvRzxBqXbeWwSpu92AIE1M=,iv:1pyoVcT1o/PfZOMOv7CMo6c1hgFxDVh3ttCVnLccdzw=,tag:YOFyvRsy0agPsGhRJRnBNA==,type:str]
     unencrypted_suffix: _unencrypted
