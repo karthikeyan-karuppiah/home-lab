@@ -1,0 +1,17 @@
+# ==============================================================================
+# Authelia Users Database
+# File: config/users_database.yml
+# ==============================================================================
+# This file contains no real secrets.
+# The password hash is injected from the environment variable
+# AUTHELIA_USER_PASSWORD_HASH (loaded from secrets.enc.env)
+# ==============================================================================
+
+users:
+  karthikeyan:
+    disabled: false
+    displayname: 'Karthikeyan'
+    email: you@example.com
+    password: '{{ env "AUTHELIA_USER_PASSWORD_HASH" }}'
+    groups:
+      - admins
