@@ -41,8 +41,10 @@ webauthn:
   disable: false
   display_name: 'Home Lab'
   attestation_conveyance_preference: indirect
-  user_verification: preferred
+  selection_criteria:
+    user_verification: 'preferred'
   timeout: 60s
+
 
 # --------------------------------------------------------------------------
 # Authentication Backend (Where users are stored)
@@ -98,9 +100,9 @@ session:
     # Root domain for the cookie
     - domain: 'home.lab'
       # Where the login page lives
-      authelia_url: 'https://home.lab'
+      authelia_url: 'https://auth.home.lab'
       # Where to go after login
-      default_redirection_url: 'https://home.lab'
+      default_redirection_url: 'https://music.home.lab'
 
   # Connect to the Redis container for persistent session storage
   redis:
