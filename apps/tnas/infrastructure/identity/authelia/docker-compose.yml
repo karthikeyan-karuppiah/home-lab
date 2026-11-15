@@ -30,7 +30,15 @@ services:
     env_file:
       - ./secrets.enc.env
 
-    # All configuration lives in this volume.
+    # Inject Git-tracked config files directly from the doco-cd repo checkout
+    # so changes pushed to Git automatically update the container.
+    configs:
+      - source: authelia_config
+        target: /config/configuration.yml
+      - source: authelia_users
+        target: /config/users_database.yml
+
+    # Persistent runtime data (db.sqlite3, notification.txt) lives in this volume.
     # On the NAS this path becomes permanent storage.
     volumes:
       - /Volume1/DockerAppsData/authelia/config:/config
@@ -81,6 +89,18 @@ services:
 
     networks:
       - proxy
+
+# ==============================================================================
+# Configs
+# ==============================================================================
+# Mount configuration files directly from the Git repository checked out by
+# doco-cd, overriding any empty/default files in the persistent NAS volume.
+# ==============================================================================
+configs:
+  authelia_config:
+    file: ./config/configuration.yml
+  authelia_users:
+    file: ./config/users_database.yml
 
 # ==============================================================================
 # Networks
