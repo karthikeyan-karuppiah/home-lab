@@ -4,7 +4,7 @@
 # ==============================================================================
 # This file contains no real secrets.
 # The password hash is injected from the environment variable
-# AUTHELIA_USER_PASSWORD_HASH (loaded from secrets.enc.env)
+# USER_PASSWORD_HASH (loaded from secrets.enc.env)
 # ==============================================================================
 
 users:
@@ -12,6 +12,6 @@ users:
     disabled: false
     displayname: 'Karthikeyan'
     email: you@example.com
-    password: '{{ env "AUTHELIA_USER_PASSWORD_HASH" }}'
+    password: '{{ env "USER_PASSWORD_HASH" }}'
     groups:
       - admins

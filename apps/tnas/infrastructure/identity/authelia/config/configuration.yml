@@ -142,5 +142,5 @@ notifier:
 identity_validation:
   reset_password:
     # JWT secret is loaded from the environment variable:
-    # AUTHELIA_JWT_SECRET (from secrets.enc.env)
-    jwt_secret: '{{ env "AUTHELIA_JWT_SECRET" }}'
+    # AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET  (from secrets.enc.env)
+    jwt_secret: '{{ env "AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET " }}'
