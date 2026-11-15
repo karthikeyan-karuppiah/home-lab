@@ -69,7 +69,7 @@ To enforce container statelessness and guarantee zero configuration drift, stora
 ### Stage 1: Client-Side Edge Partitioning (Split-Tunneling)
 When a remote client initiates a network session over a cellular network interface, the local operating system kernel evaluates the destination address against active routing tables prior to packet serialization:
 * **Public Internet Routing**: Requests targeting external public domains (e.g., `google.com`) bypass the virtual network interface completely. They route natively via the mobile carrier's gateway, conserving home broadband upstream bandwidth.
-* **Cryptographic Tunnel Routing**: Requests targeting the home lab network space match the active WireGuard interface configuration parameters: `AllowedIPs = 192.168.1.0/24, 10.8.0.0/24`. The client kernel intercepts the payload, encrypts the network packets using high-performance Noise protocol keys, and encapsulates them into a secure UDP stream directed at the dynamic DNS perimeter endpoint (`<your-subdomain>.duckdns.org:51820`).
+* **Cryptographic Tunnel Routing**: Requests targeting the home lab network space match the active WireGuard interface configuration parameters: `AllowedIPs = 192.168.1.0/24, 10.8.0.0/24`. The client kernel intercepts the payload, encrypts the network packets using high-performance Noise protocol keys, and encapsulates them into a secure UDP stream directed at the dynamic DNS perimeter endpoint (`<your-subdomain>tnas.duckdns.org:51820`).
 
 ### Stage 2: Gateway Ingress & Kernel Packet Handoff (`wg-easy`)
 The encapsulated UDP packet arrives at the residential edge gateway firewall, initiating the hardware handoff sequence:
