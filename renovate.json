@@ -6,6 +6,8 @@
   ],
   "semanticCommitType": "fix",
   "semanticCommitScope": "deps",
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "customManagers": [
     {
       "customType": "regex",
@@ -13,16 +15,22 @@
         "/^README\\.md$/"
       ],
       "matchStrings": [
-        "`(?<depName>[^`\\s]+):(?<currentValue>[^`\\s]+)`\\s*<!--\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s+depName=(?<extractedDepName>[^\\s]+)\\s*-->"
+        "`(?<depName>[^`\\s]+):(?<currentValue>[^`\\s]+)`\\s*<!--\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s+depName=(?<extractedDepName>[^`\\s]+)\\s*-->"
       ]
     }
   ],
   "packageRules": [
     {
-      // Fixed: Changed from 'matchFiles' to the valid schema property 'matchFileNames'
+      "matchDatasources": [
+        "docker"
+      ],
+      "pinDigests": true
+    },
+    {
       "matchFileNames": [
         "README.md"
       ],
+      "pinDigests": false,
       "groupName": "Documentation Image Updates",
       "commitMessageTopic": "README documentation dependencies"
     }
