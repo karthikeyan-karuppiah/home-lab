@@ -105,14 +105,14 @@ jobs:
       # Runs only on direct branch pushes (PR titles are validated by pr-lint.yml).
       - name: Validate Push Commit Message
         if: github.event_name == 'push'
-        uses: ./.github/actions/validate-push-commit
+        uses: $/.github/actions/validate-push-commit
 
       # -----------------------------------------------------------------------
       # Static Analysis & Container Configuration Linting
       # -----------------------------------------------------------------------
       # Runs yamllint, docker compose config, compose-lint, and Hadolint.
       - name: Lint YAML, Compose, & Dockerfiles
-        uses: ./.github/actions/lint-containers
+        uses: $/.github/actions/lint-containers
         with:
           enforce-compose-lint: 'false'
 
@@ -129,7 +129,7 @@ jobs:
       # Vulnerability Assessment: Trivy Secrets, Image CVEs & SBOMs
       # -----------------------------------------------------------------------
       - name: Run Trivy Secret & Container Scans
-        uses: ./.github/actions/trivy-security
+        uses: $/.github/actions/trivy-security
         with:
           trivy-version: 'v0.76.1'
           enforce-image-cves: 'false'
