@@ -1,0 +1,121 @@
+# =============================================================================
+# Composite Action: Static Analysis & Container Configuration Linting
+# =============================================================================
+# Runs YAML linting, Docker Compose profile syntax verification, CIS/OWASP
+# Compose security checks (compose-lint), and conditional Dockerfile linting.
+# =============================================================================
+
+name: 'Lint Containers & Compose'
+description: 'Runs YAML lint, Docker Compose config validation, compose-lint, and Hadolint'
+
+inputs:
+  enforce-compose-lint:
+    description: 'Set to true to fail the build on compose-lint findings'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    # -------------------------------------------------------------------------
+    # Linter Execution: YAML Analysis
+    # -------------------------------------------------------------------------
+    - name: Lint YAML files
+      uses: ibiqlik/action-yamllint@v3.1.1
+      with:
+        config_file: .yamllint.yml
+
+    # -------------------------------------------------------------------------
+    # Runtime Evaluation: Docker Compose Syntax Verification
+    # -------------------------------------------------------------------------
+    # Uses Shell Process Substitution instead of basic piping.
+    # Basic piping runs steps in an isolated background subshell, causing errors or
+    # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
+    - name: Validate Docker Compose files
+      shell: bash
+      run: |
+        set -euo pipefail
+        IFS=$'\n'
+        while read -r file; do
+          if [[ -f "$file" ]]; then
+            echo "→ Validating execution profile: $file"
+            docker compose -f "$file" config --quiet
+          fi
+        done < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \))
+
+    # -------------------------------------------------------------------------
+    # Security: Docker Compose Misconfiguration Scan
+    # -------------------------------------------------------------------------
+    # IMPORTANT: Trivy does NOT support docker-compose.yml for misconfiguration scanning.
+    # compose-lint is purpose-built for Compose security checks (OWASP + CIS Docker Benchmark).
+    # It catches privileged containers, Docker socket mounts, missing capability drops,
+    # ports bound to 0.0.0.0, hardcoded secrets, missing resource limits, etc.
+    #
+    # Currently NON-BLOCKING by default: findings are printed for visibility while we
+    # gradually harden the compose files. Pass enforce-compose-lint: 'true' in ci.yaml
+    # when you are ready to enforce the rules.
+    - name: Scan Docker Compose for security misconfigurations
+      shell: bash
+      env:
+        ENFORCE: ${{ inputs.enforce-compose-lint }}
+      run: |
+        set -euo pipefail
+
+        echo "=== Installing compose-lint ==="
+        pip install --quiet compose-lint
+
+        echo
+        echo "=== Scanning Docker Compose files ==="
+
+        mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
+
+        if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
+          echo "⚠ No Docker Compose files found – skipping"
+          exit 0
+        fi
+
+        echo "✅ Found ${#COMPOSE_FILES[@]} Compose file(s)"
+        FAILED=0
+
+        for file in "${COMPOSE_FILES[@]}"; do
+          echo "→ Scanning $file"
+          if ! compose-lint "$file"; then
+            FAILED=1
+          fi
+          echo
+        done
+
+        if [ "$FAILED" -eq 1 ]; then
+          if [ "$ENFORCE" = "true" ]; then
+            echo "❌ compose-lint found security issues (enforced)"
+            exit 1
+          fi
+          echo "⚠ compose-lint found security issues (non-blocking for now)"
+          echo "   Set enforce-compose-lint: 'true' in ci.yaml when ready to enforce."
+          exit 0
+        fi
+
+        echo "✅ No critical Compose security issues found"
+
+    # -------------------------------------------------------------------------
+    # Conditional Steps: Dockerfile Validation
+    # -------------------------------------------------------------------------
+    # Evaluates the repository layout first to see if any custom images exist.
+    - name: Check for Dockerfiles
+      id: dockerfiles
+      shell: bash
+      run: |
+        set -euo pipefail
+        if find . -type f \( -name "Dockerfile" -o -name "*.dockerfile" -o -name "Dockerfile.*" \) | grep -q .; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Runs the enterprise-standard Hadolint analyzer if Dockerfiles exist.
+    - name: Lint Dockerfiles with Hadolint
+      if: steps.dockerfiles.outputs.found == 'true'
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        failure-threshold: warning
+        recursive: true
