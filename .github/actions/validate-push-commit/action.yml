@@ -1,0 +1,55 @@
+# =============================================================================
+# Composite Action: Push Commit Message Compliance Gate
+# =============================================================================
+# Validates commit headers on direct pushes to enforce Conventional Commits
+# standards aligned with Release Please. (PR titles are handled separately by
+# pr-lint.yml so metadata edits don't require full CI re-runs.)
+# =============================================================================
+
+name: 'Validate Push Commit Message'
+description: 'Enforces Conventional Commits formatting on direct branch pushes'
+
+runs:
+  using: 'composite'
+  steps:
+    # -------------------------------------------------------------------------
+    # Compliance Gate: Conventional Commit Message Validation
+    # -------------------------------------------------------------------------
+    # Validates headers immediately after checking out code to enforce fail-fast standards.
+    - name: Validate Commit Message Format
+      if: github.event_name == 'push'
+      shell: bash
+      env:
+        # Passed via env to avoid script-injection risks from raw commit messages
+        COMMIT_MSG: ${{ github.event.head_commit.message }}
+      run: |
+        set -euo pipefail
+        echo "=== Verifying Push Commit Message Compliance ==="
+
+        # Clean up any multi-line commit descriptions to test just the first line
+        commit_header=$(echo "$COMMIT_MSG" | head -n 1)
+
+        # Explicitly permits every type listed in your release-please configuration
+        # and enforces a lowercase description start (matching pr-lint.yml)
+        conventional_commit_regex="^(feat|fix|perf|revert|docs|style|chore|refactor|test|build|ci)(\([a-zA-Z0-9_-]+\))?!?: [^A-Z].+"
+
+        # Skip validation for automated merge commits or release-please tags
+        if [[ "$commit_header" =~ ^Merge.* || "$commit_header" =~ ^chore\(release\):.* ]]; then
+          echo "✅ Skipping automated or merge commit strategy context."
+          exit 0
+        fi
+
+        # Validate layout structure format
+        if [[ ! "$commit_header" =~ $conventional_commit_regex ]]; then
+          echo -e "\033[1;31m❌ ERROR: Invalid Commit Message Format!\033[0m"
+          echo "Your header: \"$commit_header\""
+          echo ""
+          echo "Your commit message must follow the Conventional Commits specification."
+          echo "Example: feat: add automated backup script"
+          echo "Example: chore(docker): update container port bindings"
+          echo ""
+          echo "Allowed prefixes match your release-please config (with lowercase description):"
+          echo "  feat, fix, perf, revert, docs, style, chore, refactor, test, build, ci"
+          exit 1
+        fi
+        echo "✅ Commit message matches conventional specification."

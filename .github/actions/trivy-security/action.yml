@@ -1,0 +1,111 @@
+# =============================================================================
+# Composite Action: Trivy Vulnerability, Secret & SBOM Scanning
+# =============================================================================
+# Handles Trivy installation/caching, repository filesystem secret scanning,
+# container image CVE scanning, and CycloneDX SBOM generation.
+# =============================================================================
+
+name: 'Trivy Secret & Image Security Scan'
+description: 'Installs Trivy, scans filesystem for secrets, and scans Compose container images + generates SBOMs'
+
+inputs:
+  trivy-version:
+    description: 'Trivy CLI version to install'
+    required: false
+    default: 'v0.76.1'
+  enforce-image-cves:
+    description: 'Set to true to fail the build on CRITICAL/HIGH container image CVEs'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    # -------------------------------------------------------------------------
+    # Vulnerability Assessment: Secrets in source (Trivy)
+    # -------------------------------------------------------------------------
+    # Trivy is excellent for secret detection in the repository filesystem.
+    # Misconfiguration scanning for Docker Compose is handled by compose-lint.
+    # Note: setup-trivy with `cache: true` natively manages Trivy DB caching.
+    - name: Install Trivy
+      uses: aquasecurity/setup-trivy@v0.2.6
+      with:
+        version: ${{ inputs.trivy-version }}
+        cache: true
+
+    - name: Scan for secrets with Trivy
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "=== Trivy Secret Scan ==="
+        trivy fs \
+          --scanners secret \
+          --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          --format table \
+          --skip-dirs .git \
+          .
+
+    # -------------------------------------------------------------------------
+    # Container Image Scanning + SBOM Generation (Trivy)
+    # -------------------------------------------------------------------------
+    # 1. Extract image references from all docker-compose files.
+    # 2. Scan each image for known CVEs (CRITICAL / HIGH).
+    # 3. Generate a CycloneDX SBOM per image for supply-chain tracking.
+    #
+    # Currently NON-BLOCKING by default for image CVEs so the pipeline stays green
+    # while findings are triaged. Pass enforce-image-cves: 'true' in ci.yaml
+    # when ready to enforce image vulnerability gates.
+    - name: Scan container images and generate SBOMs
+      shell: bash
+      env:
+        ENFORCE_CVES: ${{ inputs.enforce-image-cves }}
+      run: |
+        set -euo pipefail
+
+        echo "=== Trivy Image Scan + SBOM Generation ==="
+        mkdir -p trivy-sboms trivy-reports
+
+        # Discover unique image references from Compose files
+        mapfile -t IMAGES < <(
+          find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) \
+            -exec grep -hE '^\s+image:\s+' {} + \
+            | sed -E 's/.*image:[[:space:]]*["'\'']?([^"'\'']+)["'\'']?.*/\1/' \
+            | sort -u
+        )
+
+        if [ ${#IMAGES[@]} -eq 0 ]; then
+          echo "⚠ No container images found in Compose files – skipping"
+          exit 0
+        fi
+
+        echo "✅ Found ${#IMAGES[@]} unique image(s):"
+        printf '   - %s\n' "${IMAGES[@]}"
+        echo
+
+        EXIT_CODE=0
+        [ "$ENFORCE_CVES" = "true" ] && EXIT_CODE=1
+
+        for img in "${IMAGES[@]}"; do
+          # Skip empty or variable-only references (e.g. ${IMAGE})
+          if [[ -z "$img" || "$img" == *'${'* ]]; then
+            echo "→ Skipping unresolved image reference: $img"
+            continue
+          fi
+
+          safe_name=$(echo "$img" | tr '/:' '__')
+          echo "→ Scanning image: $img"
+
+          # Vulnerability table
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code "$EXIT_CODE" \
+            --format table \
+            "$img"
+
+          # CycloneDX SBOM generation for supply-chain tracking
+          trivy image \
+            --format cyclonedx \
+            --output "trivy-sboms/${safe_name}.cdx.json" \
+            "$img"
+        done

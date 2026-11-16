@@ -1,10 +1,11 @@
 name: Continuous Integration
+
 # Event Triggers (Webhook Configuration)
 # -----------------------------------------------------------------------------
 on:
   push:
     branches: [main]
-    #  Prevent wasted runner billable minutes.
+    # Prevent wasted runner billable minutes.
     # Documentation or configuration-only changes should not spin up infrastructure.
     paths-ignore:
       - '**.md'
@@ -21,7 +22,7 @@ on:
 # Concurrency Management (Anti-Race Condition Logic)
 # -----------------------------------------------------------------------------
 concurrency:
-  #  Isolates execution contexts cleanly.
+  # Isolates execution contexts cleanly.
   # If a developer pushes a new commit to an active PR, the old running job
   # is safely terminated, preserving compute costs. Using the PR number ensures
   # separate PRs do not conflict with or cancel each other out.
@@ -31,7 +32,7 @@ concurrency:
 # -----------------------------------------------------------------------------
 # Zero-Trust Global Permissions Matrix
 # -----------------------------------------------------------------------------
-#  Principal of Least Privilege.
+# Principal of Least Privilege.
 # Explicitly revokes all default token permissions globally.
 # Each standalone job must request its own granular scopes down below.
 permissions: {}
@@ -70,6 +71,8 @@ jobs:
   # ===========================================================================
   lint-and-scan:
     name: Lint & Security Scans
+    # Ensures lockfile supply-chain verification passes before executing scans
+    needs: verify-lockfile
     runs-on: ubuntu-latest
     # Hard constraint to break out of hanging or frozen test tasks
     timeout-minutes: 15
@@ -97,158 +100,21 @@ jobs:
           persist-credentials: false
 
       # -----------------------------------------------------------------------
-      # Compliance Gate: Conventional Commit Message Validation
+      # Compliance Gate: Push Commit Message Validation
       # -----------------------------------------------------------------------
-      # Validates headers immediately after checking out code to enforce fail-fast standards.
-      - name: Validate Commit Message Format
-        run: |
-          set -euo pipefail
-          echo "=== Verifying Commit Message Compliance ==="
-
-          # Handle pull request events vs direct branch push events gracefully
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            commit_msg="${{ github.event.pull_request.title }}"
-          else
-            commit_msg="${{ github.event.head_commit.message }}"
-          fi
-
-          # Clean up any multi-line commit descriptions to test just the first line
-          commit_header=$(echo "$commit_msg" | head -n 1)
-
-          # Explicitly permits every type listed in your release-please configuration
-          conventional_commit_regex="^(feat|fix|perf|revert|docs|style|chore|refactor|test|build|ci)(\([a-zA-Z0-9_-]+\))?!?: .+"
-
-          # Skip validation for automated merge commits or release-please tags
-          if [[ "$commit_header" =~ ^Merge.* || "$commit_header" =~ ^chore\(release\):.* ]]; then
-              echo "✅ Skipping automated or merge commit strategy context."
-              exit 0
-          fi
-
-          # Validate layout structure format
-          if [[ ! "$commit_header" =~ $conventional_commit_regex ]]; then
-              echo -e "\033[1;31m❌ ERROR: Invalid Commit Message Format!\033[0m"
-              echo "Your header: \"$commit_header\""
-              echo ""
-              echo "Your commit message must follow the Conventional Commits specification."
-              echo "Example: feat: add automated backup script"
-              echo "Example: chore(docker): update container port bindings"
-              echo ""
-              echo "Allowed prefixes match your release-please config:"
-              echo "  feat, fix, perf, revert, docs, style, chore, refactor, test, build, ci"
-              exit 1
-          fi
-          echo "✅ Commit message matches conventional specification."
+      # Runs only on direct branch pushes (PR titles are validated by pr-lint.yml).
+      - name: Validate Push Commit Message
+        if: github.event_name == 'push'
+        uses: ./.github/actions/validate-push-commit
 
       # -----------------------------------------------------------------------
-      # Performance Optimization: Caching Layers
+      # Static Analysis & Container Configuration Linting
       # -----------------------------------------------------------------------
-      # Avoids pulling structural databases from the open web during every single run.
-      - name: Cache Trivy vulnerability database
-        uses: actions/cache@v4.3.0
+      # Runs yamllint, docker compose config, compose-lint, and Hadolint.
+      - name: Lint YAML, Compose, & Dockerfiles
+        uses: ./.github/actions/lint-containers
         with:
-          path: ~/.cache/trivy
-          # Dynamic key maps to changes inside files containing "compose" or "Dockerfile"
-          key: ${{ runner.os }}-trivy-${{ hashFiles('**/*compose*.yml', '**/Dockerfile*') }}
-          restore-keys: |
-            ${{ runner.os }}-trivy-
-
-      # -----------------------------------------------------------------------
-      # Linter Execution: YAML Analysis
-      # -----------------------------------------------------------------------
-      - name: Lint YAML files
-        uses: ibiqlik/action-yamllint@v3.1.1
-        with:
-          config_data: |
-            extends: default
-            rules:
-              line-length: disable
-              document-start: disable
-
-      # -----------------------------------------------------------------------
-      # Runtime Evaluation: Docker Compose Syntax Verification
-      # -----------------------------------------------------------------------
-      # Uses Shell Process Substitution instead of basic piping.
-      # Basic piping runs steps in an isolated background subshell, causing errors or
-      # failures to sometimes be masked. Process substitution ensures 'pipefail' catches errors.
-      - name: Validate Docker Compose files
-        run: |
-          set -euo pipefail
-          IFS=$'\n'
-          while read -r file; do
-            if [[ -f "$file" ]]; then
-              echo "→ Validating execution profile: $file"
-              docker compose -f "$file" config --quiet
-            fi
-          done < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \))
-
-      # -----------------------------------------------------------------------
-      # Security: Docker Compose Misconfiguration Scan
-      # -----------------------------------------------------------------------
-      # IMPORTANT: Trivy does NOT support docker-compose.yml for misconfiguration scanning.
-      # compose-lint is purpose-built for Compose security checks (OWASP + CIS Docker Benchmark).
-      # It catches privileged containers, Docker socket mounts, missing capability drops,
-      # ports bound to 0.0.0.0, hardcoded secrets, missing resource limits, etc.
-      #
-      # Currently NON-BLOCKING: findings are printed for visibility while we
-      # gradually harden the compose files. Change the final "exit 0" to "exit 1"
-      # when you are ready to enforce the rules.
-      - name: Scan Docker Compose for security misconfigurations
-        run: |
-          set -euo pipefail
-
-          echo "=== Installing compose-lint ==="
-          pip install --quiet compose-lint
-
-          echo
-          echo "=== Scanning Docker Compose files ==="
-
-          mapfile -t COMPOSE_FILES < <(find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) | sort)
-
-          if [ ${#COMPOSE_FILES[@]} -eq 0 ]; then
-            echo "⚠ No Docker Compose files found – skipping"
-            exit 0
-          fi
-
-          echo "✅ Found ${#COMPOSE_FILES[@]} Compose file(s)"
-          FAILED=0
-
-          for file in "${COMPOSE_FILES[@]}"; do
-            echo "→ Scanning $file"
-            if ! compose-lint "$file"; then
-              FAILED=1
-            fi
-            echo
-          done
-
-          if [ "$FAILED" -eq 1 ]; then
-            echo "⚠ compose-lint found security issues (non-blocking for now)"
-            echo "   Fix gradually, then change the final exit 0 to exit 1."
-            exit 0
-          fi
-
-          echo "✅ No critical Compose security issues found"
-
-      # -----------------------------------------------------------------------
-      # Conditional Steps: Dockerfile Validation
-      # -----------------------------------------------------------------------
-      # Evaluates the repository layout first to see if any custom images exist.
-      - name: Check for Dockerfiles
-        id: dockerfiles
-        run: |
-          set -euo pipefail
-          if find . -type f \( -name "Dockerfile" -o -name "*.dockerfile" -o -name "Dockerfile.*" \) | grep -q .; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Runs the enterprise-standard Hadolint analyzer if Dockerfiles exist.
-      - name: Lint Dockerfiles with Hadolint
-        if: steps.dockerfiles.outputs.found == 'true'
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          failure-threshold: warning
-          recursive: true
+          enforce-compose-lint: 'false'
 
       # -----------------------------------------------------------------------
       # Threat Management: Secret Scanning (Gitleaks)
@@ -260,135 +126,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------------------------------
-      # Vulnerability Assessment: Secrets in source (Trivy)
+      # Vulnerability Assessment: Trivy Secrets, Image CVEs & SBOMs
       # -----------------------------------------------------------------------
-      # Trivy is excellent for secret detection in the repository filesystem.
-      # Misconfiguration scanning for Docker Compose is handled by compose-lint above.
-      - name: Install Trivy
-        uses: aquasecurity/setup-trivy@v0.2.6
+      - name: Run Trivy Secret & Container Scans
+        uses: ./.github/actions/trivy-security
         with:
-          version: v0.76.1
-          cache: true
-
-      - name: Scan for secrets with Trivy
-        run: |
-          set -euo pipefail
-          echo "=== Trivy Secret Scan ==="
-          trivy fs \
-            --scanners secret \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            --format table \
-            --skip-dirs .git \
-            .
-
-      # -----------------------------------------------------------------------
-      # Container Image Scanning + SBOM Generation (Trivy)
-      # -----------------------------------------------------------------------
-      # 1. Extract image references from all docker-compose files.
-      # 2. Scan each image for known CVEs (CRITICAL / HIGH).
-      # 3. Generate a CycloneDX SBOM per image for supply-chain tracking.
-      #
-      # Currently NON-BLOCKING for image CVEs so the pipeline stays green
-      # while findings are triaged. Change --exit-code 0 to 1 when ready
-      # to enforce image vulnerability gates.
-      - name: Scan container images and generate SBOMs
-        run: |
-          set -euo pipefail
-
-          echo "=== Trivy Image Scan + SBOM Generation ==="
-          mkdir -p trivy-sboms trivy-reports
-
-          # Discover unique image references from Compose files
-          mapfile -t IMAGES < <(
-            find . -type f \( -name "docker-compose.yml" -o -name "compose.yml" -o -name "compose.yaml" \) \
-              -exec grep -hE '^\s+image:\s+' {} + \
-              | sed -E 's/.*image:[[:space:]]*["'\'']?([^"'\'']+)["'\'']?.*/\1/' \
-              | sort -u
-          )
-
-          if [ ${#IMAGES[@]} -eq 0 ]; then
-            echo "⚠ No container images found in Compose files – skipping"
-            exit 0
-          fi
-
-          echo "✅ Found ${#IMAGES[@]} unique image(s):"
-          printf '   - %s\n' "${IMAGES[@]}"
-          echo
-
-          SCAN_FAILED=0
-
-          for img in "${IMAGES[@]}"; do
-            # Skip empty or variable-only references (e.g. ${IMAGE})
-            if [[ -z "$img" || "$img" == *'${'* ]]; then
-              echo "→ Skipping unresolved image reference: $img"
-              continue
-            fi
-
-            safe_name=$(echo "$img" | tr '/:' '__')
-            echo "→ Scanning image: $img"
-
-            # Vulnerability table (non-blocking for now)
-            if ! trivy image \
-              --severity CRITICAL,HIGH \
-              --format table \
-              --exit-code 0 \
-              "$img"; then
-              SCAN_FAILED=1
-            fi
-
-            # Machine-readable report
-            trivy image \
-              --severity CRITICAL,HIGH \
-              --format json \
-              --output "trivy-reports/${safe_name}-vuln.json" \
-              --exit-code 0 \
-              "$img" || true
-
-            # CycloneDX SBOM for supply-chain inventory
-            trivy image \
-              --format cyclonedx \
-              --output "trivy-sboms/${safe_name}-sbom.json" \
-              "$img" || true
-
-            echo
-          done
-
-          if [ "$SCAN_FAILED" -eq 1 ]; then
-            echo "⚠ Some images reported CRITICAL/HIGH findings (non-blocking for now)"
-          else
-            echo "✅ No CRITICAL/HIGH vulnerabilities reported for scanned images"
-          fi
-
-      # -----------------------------------------------------------------------
-      # Artifact Upload: SBOMs + Vulnerability Reports
-      # -----------------------------------------------------------------------
-      # Keeps scan outputs available for later review or release attachment.
-      - name: Upload Trivy SBOMs and reports
-        uses: actions/upload-artifact@v4.6.2
-        if: always()
-        with:
-          name: trivy-image-scan-results
-          path: |
-            trivy-sboms/
-            trivy-reports/
-          retention-days: 30
-
-      # -----------------------------------------------------------------------
-      # Build Data Passing Setup
-      # -----------------------------------------------------------------------
-      # Generates a safe deployment configuration manifest build payload.
-      - name: Generate Build Payload
-        run: |
-          set -euo pipefail
-          mkdir -p build-dist
-          echo "build_id=${{ github.run_id }}" > build-dist/metadata.txt
-          echo "sha=${{ github.sha }}" >> build-dist/metadata.txt
-
-      # Downstream Delivery: Securely upload the payload for Pipeline 2
-      - name: Upload Deployment Payload Artifact
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: deployment-payload
-          path: build-dist/
-          retention-days: 1
+          trivy-version: 'v0.76.1'
+          enforce-image-cves: 'false'

@@ -13,7 +13,7 @@ name: "PR Title Linter"
 # -----------------------------------------------------------------------------
 on:
   pull_request:
-    # Google Standard: Evaluates whenever metadata shifts.
+    # Evaluates whenever metadata shifts.
     # Runs completely independently of main branch code compilations or deployment pushes.
     types:
       - opened
@@ -21,9 +21,17 @@ on:
       - synchronize
 
 # -----------------------------------------------------------------------------
+# Concurrency Management (Anti-Race Condition Logic)
+# -----------------------------------------------------------------------------
+concurrency:
+  # Cancels stale title checks if a contributor rapidly edits the PR title
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# -----------------------------------------------------------------------------
 # Zero-Trust Global Permissions Matrix
 # -----------------------------------------------------------------------------
-# Google Standard: Principal of Least Privilege.
+# Principal of Least Privilege.
 # Explicitly revokes all default token permissions globally.
 # Each standalone job must request its own granular scopes down below.
 permissions: {}
@@ -59,14 +67,15 @@ jobs:
           types: |
             feat
             fix
-            chore
+            perf
+            revert
             docs
             style
+            chore
             refactor
-            perf
             test
-            ci
             build
+            ci
           # Enforces strict structure checking. Will cause an immediate failure if
           # someone forgets the space after the colon or enters an un-parsable string.
           requireScope: false
