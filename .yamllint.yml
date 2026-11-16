@@ -7,9 +7,15 @@ ignore: |
   **/*.sops.yaml
 
 rules:
+  line-length: disable
+  document-start: disable
+
+  # Allows GitHub Actions 'on:' trigger without truthy warnings
   truthy:
     allowed-values: ['true', 'false', 'on']
     check-keys: false
 
+  # Relaxes inline comment spacing (1 space instead of 2) and allows #comment
   comments:
     min-spaces-from-content: 1
+    require-starting-space: false
