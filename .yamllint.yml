@@ -1,17 +1,15 @@
 extends: default
 
 ignore: |
-  *.enc.yml
-  *.enc.yaml
-  *.sops.yml
-  *.sops.yaml
+  **/*.enc.yml
+  **/*.enc.yaml
+  **/*.sops.yml
+  **/*.sops.yaml
 
 rules:
-  # Allows GitHub Actions 'on:' trigger without truthy warnings
   truthy:
     allowed-values: ['true', 'false', 'on']
     check-keys: false
 
-  # Relaxes inline comment spacing (1 space instead of 2)
   comments:
     min-spaces-from-content: 1
