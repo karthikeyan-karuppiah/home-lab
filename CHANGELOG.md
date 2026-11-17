@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.2.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.4...v1.2.0) (2026-11-16)
+
+
+### Features
+
+* **blocky:** add custom DNS mappings for auth.home.lab and music.home.lab ([7685181](https://github.com/karthikeyan-karuppiah/home-lab/commit/7685181e8204a7a550a31eca30ca0da59322a579))
+* **identity:** introduce Authelia as central identity provider ([83cf025](https://github.com/karthikeyan-karuppiah/home-lab/commit/83cf02587c66e63b782f5af73f6f00c95e0660d8))
+* **identity:** introduce Authelia as central identity provider ([1890d8d](https://github.com/karthikeyan-karuppiah/home-lab/commit/1890d8d353d60c9539eeebe7c3d042f8ff735b04))
+* **identity:** introduce Authelia as central identity provider ([bf89513](https://github.com/karthikeyan-karuppiah/home-lab/commit/bf895133854c30de022ab736e20c22cda71a626b))
+
+
+### Bug Fixes
+
+* **authelia:** add port 8443 to authelia_url and default_redirection_url ([1e27fe2](https://github.com/karthikeyan-karuppiah/home-lab/commit/1e27fe29ba6947c6d54011526ff43b8444b0a7d3))
+* **authelia:** Authelia password hash escaping in secrets.enc.env and WebAuthn config warning ([7aa68e8](https://github.com/karthikeyan-karuppiah/home-lab/commit/7aa68e8df512ed9e98c5c67a5926846705033848))
+* **authelia:** re-encrypt users_database.enc.yml with valid YAML formatting ([d7b96ce](https://github.com/karthikeyan-karuppiah/home-lab/commit/d7b96ce90519fdeacc69fdbfae706597c2c5b88a))
+* **authelia:** re-encrypt users_database.enc.yml with valid YAML formatting ([5da2b79](https://github.com/karthikeyan-karuppiah/home-lab/commit/5da2b79d81b261503d3cc5c0e67b88d1b25f40bd))
+* **authelia:** rename user password hash and JWT secret env variables ([d37bc1b](https://github.com/karthikeyan-karuppiah/home-lab/commit/d37bc1b7535ff68c4c11098d0e02d89660da0916))
+* **authelia:** update cookie domain to home.lab and wire Redis and env secrets ([762d15d](https://github.com/karthikeyan-karuppiah/home-lab/commit/762d15d12bcc3b20d4f45a5afcc40a152b5131fd))
+* **authelia:** update USER_PASSWORD_HASH format in secrets.enc.env ([83112dc](https://github.com/karthikeyan-karuppiah/home-lab/commit/83112dc6e089481e549756958ab927ec632c9167))
+* **authelia:** update USER_PASSWORD_HASH format in secrets.enc.env ([b3768a1](https://github.com/karthikeyan-karuppiah/home-lab/commit/b3768a1e87a88e6e94afc33df19a9feccef5519e))
+* **authelia:** update USER_PASSWORD_HASH format in secrets.enc.env ([7c8b034](https://github.com/karthikeyan-karuppiah/home-lab/commit/7c8b034754122cb70298a6cf2a62a7f1a8570d3b))
+* **authelia:** update USER_PASSWORD_HASH format in secrets.enc.env ([e15b120](https://github.com/karthikeyan-karuppiah/home-lab/commit/e15b120a0344a5851317d42565fb33b7a2b7f02b))
+* Mount Authelia config files from Git via Docker Compose configs for doco-cd ([a8da737](https://github.com/karthikeyan-karuppiah/home-lab/commit/a8da73749021980c5aca2d3b7a3614f4f818b23f))
+
+
+### Miscellaneous Chores
+
+* **authelia:** encrypt users_database with SOPS ([16e841a](https://github.com/karthikeyan-karuppiah/home-lab/commit/16e841aded4e6e328a07c39695e69d882e2cb586))
+* **lint:** ignore encrypted SOPS files in yamllint ([8efcd93](https://github.com/karthikeyan-karuppiah/home-lab/commit/8efcd936e338ea61b873fca625751ce51d03f261))
+* **lint:** ignore encrypted SOPS files in yamllint ([27c63e5](https://github.com/karthikeyan-karuppiah/home-lab/commit/27c63e5d525784e449cbecb2503742c01657af94))
+* **security:** rotate encrypted DuckDNS configuration ([b2003eb](https://github.com/karthikeyan-karuppiah/home-lab/commit/b2003eb3bd3fc0b5ed5921334be869d4c829bb25))
+
 ## [1.1.4](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.3...v1.1.4) (2026-11-15)
 
 
