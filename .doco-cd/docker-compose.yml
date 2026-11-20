@@ -4,7 +4,7 @@ services:
     # copied from - https://github.com/kimdre/doco-cd/blob/main/docker-compose.yml and modified if needed
     # You can also pin to a specific tag (version)
     # Available tags can be found here: https://github.com/kimdre/doco-cd/pkgs/container/doco-cd
-    image: ghcr.io/kimdre/doco-cd:0.131.0
+    image: ghcr.io/kimdre/doco-cd:0.131.0@sha256:33761af0adb58696bf7892604a4a319cee6164aa5cb17e5b4b4f5c8cb248a603
     restart: unless-stopped
     ports:
       - "9120:9120" # Prometheus metrics

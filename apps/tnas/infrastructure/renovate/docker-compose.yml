@@ -1,7 +1,7 @@
 services:
   renovate:
     # Official Renovate image (pinned to a specific version for reproducibility)
-    image: renovate/renovate:44.198.3
+    image: renovate/renovate:44.198.3@sha256:bf344aa39d5b592ec728e1db5c3e1d940a5093a89a4598073efcb18d592d121c
     container_name: renovate
 
     # "no" = do not restart automatically.

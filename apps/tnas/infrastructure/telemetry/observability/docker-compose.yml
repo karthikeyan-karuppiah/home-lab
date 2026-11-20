@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:latest@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
     container_name: prometheus
     restart: unless-stopped
     user: "0:0"  # <--- CRUCIAL! Overrides container permissions to solve the host folder block
@@ -16,7 +16,7 @@ services:
       - "9090:9090"
 
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana-oss:latest@sha256:5dad0df181cb644a14e13617b913b261a54f7d4fd4510721dba420929f35bea2
     container_name: grafana
     restart: unless-stopped
     user: "0:0"  # (Keeps Grafana working cleanly too!)
