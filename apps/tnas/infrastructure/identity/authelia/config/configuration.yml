@@ -101,7 +101,9 @@ session:
     - domain: 'home.lab'
       # Where the login page lives
       authelia_url: 'https://auth.home.lab'
-      default_redirection_url: 'https://home.lab'
+      # Where to go after logging in directly at auth.home.lab
+      default_redirection_url: 'https://music.home.lab'
+
 
   # Connect to the Redis container for persistent session storage
   redis:
