@@ -61,7 +61,12 @@ jobs:
           persist-credentials: false
 
       - name: Install gh-actions-lock
-        run: gh extension install github/gh-actions-lock --pin v0.4.1
+        run: |
+          set -euo pipefail
+          if ! command -v gh >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq gh
+          fi
+          gh extension install github/gh-actions-lock --pin v0.4.1
 
       - name: Verify workflow lockfile
         run: gh actions-lock --verify
@@ -105,15 +110,16 @@ jobs:
       # Runs only on direct branch pushes (PR titles are validated by pr-lint.yml).
       - name: Validate Push Commit Message
         if: github.event_name == 'push'
-        uses: $/.github/actions/validate-push-commit
+        uses: karthikeyan-karuppiah/devsecops-actions/validate-push-commit@v1.2.1
 
       # -----------------------------------------------------------------------
       # Static Analysis & Container Configuration Linting
       # -----------------------------------------------------------------------
       # Runs yamllint, docker compose config, compose-lint, and Hadolint.
       - name: Lint YAML, Compose, & Dockerfiles
-        uses: $/.github/actions/lint-containers
+        uses: karthikeyan-karuppiah/devsecops-actions/lint-containers@v1.2.1
         with:
+          yamllint-config-file: '.yamllint.yml'
           enforce-compose-lint: 'false'
 
       # -----------------------------------------------------------------------
@@ -129,7 +135,7 @@ jobs:
       # Vulnerability Assessment: Trivy Secrets, Image CVEs & SBOMs
       # -----------------------------------------------------------------------
       - name: Run Trivy Secret & Container Scans
-        uses: $/.github/actions/trivy-security
+        uses: karthikeyan-karuppiah/devsecops-actions/trivy-security@v1.2.1
         with:
           trivy-version: 'v0.76.1'
           enforce-image-cves: 'false'
