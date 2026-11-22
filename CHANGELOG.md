@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.2.0...v1.3.0) (2026-11-22)
+
+
+### Features
+
+* **observability:** enable prometheus metrics scraping for blocky ([907bbb1](https://github.com/karthikeyan-karuppiah/home-lab/commit/907bbb159907aa7432cb56de3f6df50b5ae38719))
+
+
+### Miscellaneous Chores
+
+* **renovate:** configure tiered automerge and perimeter safety overrides ([11aaf2b](https://github.com/karthikeyan-karuppiah/home-lab/commit/11aaf2b3185cf20018fbf37c1d0a151a96854a5b))
+
 ## [1.2.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.1.4...v1.2.0) (2026-11-16)
 
 
