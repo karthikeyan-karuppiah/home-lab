@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.0...v1.3.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **authelia:** align session cookie URLs with NPM standard HTTPS ([25488ba](https://github.com/karthikeyan-karuppiah/home-lab/commit/25488bad05ad9261236ec6cee33cbccb35e35c75))
+* **authelia:** align session cookie URLs with root domain on standard HTTPS ([d67f3da](https://github.com/karthikeyan-karuppiah/home-lab/commit/d67f3da4043427e0fd9658569efc2266e53d5718))
+* **authelia:** restore :8443 port in session cookie URLs to match NPM ([0091b33](https://github.com/karthikeyan-karuppiah/home-lab/commit/0091b3344d41bc4b462a58a3006f8dc0757da62f))
+* **authelia:** set session cookie URLs to standard HTTPS subdomains ([2da0f48](https://github.com/karthikeyan-karuppiah/home-lab/commit/2da0f4848b68668272c58acab94de0efc44fddb9))
+
 ## [1.3.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.2.0...v1.3.0) (2026-11-22)
 
 
