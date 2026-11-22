@@ -100,9 +100,8 @@ session:
     # Root domain for the cookie
     - domain: 'home.lab'
       # Where the login page lives
-      authelia_url: 'https://auth.home.lab:8443'
-      # Where to go after login
-      default_redirection_url: 'https://music.home.lab:8443'
+      authelia_url: 'https://home.lab'
+      default_redirection_url: 'https://home.lab'
 
   # Connect to the Redis container for persistent session storage
   redis:
