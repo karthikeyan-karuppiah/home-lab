@@ -1,13 +1,18 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "$schema": "https://renovatebot.com",
   "extends": [
     "config:recommended",
-    ":semanticCommits"
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
   ],
   "semanticCommitType": "fix",
   "semanticCommitScope": "deps",
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "platformAutomerge": true,
+  "automergeStrategy": "squash",
+  "separateMajorMinor": true,
+  "separateMinorPatch": true,
   "customManagers": [
     {
       "customType": "regex",
@@ -21,18 +26,61 @@
   ],
   "packageRules": [
     {
+      "description": "Pin Docker images to immutable SHA256 digests",
       "matchDatasources": [
         "docker"
       ],
       "pinDigests": true
     },
     {
+      "description": "Tier 1: Automerge non-breaking digest, pin, and patch updates after CI passes",
+      "matchUpdateTypes": [
+        "digest",
+        "pin",
+        "pinDigest",
+        "patch"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Tier 2: Require manual review for minor updates",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Tier 3: Hold major updates behind Dependency Dashboard approval and prevent automerge",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    },
+    {
+      "description": "Security Override: Never automerge critical perimeter, VPN, DNS, or auth containers",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "/wg-easy/",
+        "/authelia/",
+        "/nginx-proxy-manager/",
+        "/blocky/",
+        "/doco-cd/"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Group README documentation updates without SHA digests and automerge once CI passes",
       "matchFileNames": [
         "README.md"
       ],
       "pinDigests": false,
       "groupName": "Documentation Image Updates",
-      "commitMessageTopic": "README documentation dependencies"
+      "commitMessageTopic": "README documentation dependencies",
+      "semanticCommitType": "docs",
+      "automerge": true
     }
   ]
 }
