@@ -3,6 +3,17 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  # Unique identifier assigned to the 'job' label for all metrics collected from Blocky
   - job_name: 'blocky'
+
+    # How frequently Prometheus pulls metrics from Blocky (15s provides granular DNS query charts)
+    scrape_interval: 15s
+
+    # Must match the 'prometheus.path' setting defined in Blocky's config.yml
+    metrics_path: /metrics
+
     static_configs:
-      - targets: ['192.168.1.110:4000']  # Internal container DNS name and metrics port
+      # Address and port of your Blocky instance:
+      # - Use 'blocky:4000' if Prometheus and Blocky share a custom Docker bridge network
+      # - Use '<NAS-IP>:4000' if Prometheus runs in another stack, host network, or external node
+      - targets: ['192.168.1.110:4000']

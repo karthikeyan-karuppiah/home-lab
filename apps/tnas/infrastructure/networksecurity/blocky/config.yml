@@ -48,5 +48,7 @@ customDNS:
 
 # Add this block to allow Prometheus to pull metrics
 prometheus:
+  # Enables the built-in Prometheus exporter inside Blocky
   enable: true
+  # Sets the URL endpoint where Prometheus will fetch metrics (http://<NAS-IP>:4000/metrics)
   path: /metrics
