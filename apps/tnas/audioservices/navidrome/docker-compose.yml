@@ -9,5 +9,5 @@ services:
     environment:
       ND_LOGLEVEL: debug
     volumes:
-      - "/Volume1/homes/<username>/navidrome/data:/data"
-      - "/Volume1/homes/<username>/songs:/music:ro"
+      - "/Volume1/homes/carthy_k/navidrome/data:/data"
+      - "/Volume1/homes/carthy_k/songs:/music:ro"
