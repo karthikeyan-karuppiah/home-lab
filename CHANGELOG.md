@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.1...v1.3.2) (2026-11-23)
+
+
+### Miscellaneous Chores
+
+* **deps:** update ghcr.io/0xerr0r/blocky docker tag to v0.36.0 ([8fffcf4](https://github.com/karthikeyan-karuppiah/home-lab/commit/8fffcf4e25fe3907eb00b909fc942a6d39b41791))
+
 ## [1.3.1](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.0...v1.3.1) (2026-11-22)
 
 
