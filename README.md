@@ -31,21 +31,27 @@ flowchart TB
     classDef obs fill:#451a03,stroke:#fbbf24,color:#f8fafc,stroke-width:2px
     classDef storage fill:#27272a,stroke:#a1a1aa,color:#f8fafc,stroke-width:2px
 
-    Client["📱 Remote / LAN Client<br/>(iOS / Desktop)"]:::external
-    WAN(("🌐 Public Internet<br/>(Ports 80/443 Closed)")):::external
+    Client["📱 Remote / LAN Client<br/>(AllowedIPs: 192.168.1.0/24, 10.8.0.0/24)"]:::external
+    WAN(("🌐 Public Internet<br/>(Only 51820/udp Exposed)")):::external
 
-    subgraph TNAS ["🖥️ TerraMaster F4-424 Pro (TOS) — Docker Host"]
+    subgraph TNAS ["🖥️ TerraMaster F4-424 Pro (TOS) — 192.168.1.100"]
         direction TB
 
-        subgraph Ingress ["Perimeter & Identity Plane"]
-            WG["🔒 WireGuard (wg-easy)<br/>UDP :51820 | UI :51821"]:::perimeter
-            DNS["🛡️ Blocky DNS<br/>UDP/TCP :53 | Metrics :4000"]:::security
-            NPM["🔀 Nginx Proxy Manager<br/>HTTP :8080 | HTTPS :8443 | UI :81"]:::perimeter
-            Auth["🪪 Authelia IdP<br/>SSO / WebAuthn / TOTP (:9091)"]:::security
+        subgraph HostLayer ["Layer 1: Host Network Perimeter & DNS"]
+            direction LR
+            WG["1️⃣ WireGuard (wg-easy)<br/>UDP :51820 | Injects DNS 10.8.0.1"]:::perimeter
+            DNS["2️⃣ Blocky DNS<br/>UDP/TCP :53 | Resolves *.home → .100"]:::security
         end
 
-        subgraph Workloads ["Application & Media Workloads"]
-            Navi["🎵 Navidrome Media Core<br/>TCP :4533 (:ro Media)"]:::core
+        subgraph ProxyLayer ["Layer 2: Shared 'proxy' Bridge Network"]
+            direction TB
+            NPM["3️⃣ Nginx Proxy Manager<br/>L7 Host Routing (:8080 / :8443)"]:::perimeter
+            Auth["4️⃣ Authelia IdP<br/>ForwardAuth / SSO / 2FA (:9091)"]:::security
+            Navi["🎵 Navidrome Media Core<br/>Internal :4533 (:ro Media)"]:::core
+        end
+
+        subgraph IsolatedLayer ["Layer 3: Micro-Segmented 'authelia-internal'"]
+            Redis["🗄️ Authelia Redis<br/>Internal :6379 (Zero Proxy Access)"]:::security
         end
 
         subgraph Observability ["Observability & SRE Plane"]
@@ -56,25 +62,28 @@ flowchart TB
         subgraph ControlPlane ["GitOps & Backup Plane"]
             Doco["🔄 Doco-CD<br/>(Pull-Based GitOps Agent)"]:::core
             Restic["💾 Restic Backup<br/>(Daily Encrypted Snapshots)"]:::storage
-            Vol[("🗄️ /Volume1/DockerAppsData<br/>(Stateful Configs)")]:::storage
+            Vol[("🗄️ /Volume1/DockerAppsData<br/>(WG, NPM, Authelia State)")]:::storage
         end
     end
 
     B2[("☁️ Off-Site Object Storage<br/>(Encrypted 3-2-1 Backup)")]:::storage
 
-    Client -->|"1. Encrypted Tunnel (51820/udp)"| WAN
-    WAN -->|"2. Authenticated Handshake"| WG
-    WG -->|"3. DNS Queries (:53)"| DNS
-    WG -->|"4. HTTPS (*.domain :8443)"| NPM
-    NPM <-->|"5. ForwardAuth / OIDC (:9091)"| Auth
-    NPM -->|"6. Authorized Traffic"| Navi
-    NPM -->|"6. Authorized Traffic"| Graf
+    %% Packet & Control Flows
+    Client -->|"Encrypted Tunnel (51820/udp)"| WAN
+    WAN -->|"Authenticated Handshake"| WG
+    WG <-->|"1. DNS Lookup (*.home → .100)"| DNS
+    WG -->|"2. HTTP/S Request (:8080 / :8443)"| NPM
+    NPM <-->|"3. ForwardAuth Check (:9091)"| Auth
+    Auth <-->|"Session Lookup (:6379)"| Redis
+    NPM -->|"4. Authorized Traffic"| Navi
+    NPM -->|"4. Authorized Traffic"| Graf
 
+    %% Observability & Storage Flows
     DNS -.->|"Scrape :4000/metrics"| Prom
     Prom -->|"Evaluate SLO Burn Rate"| Graf
-    Vol --- Navi
+    Vol --- WG
+    Vol --- NPM
     Vol --- Auth
-    Vol --- DNS
     Vol -->|":ro Mount"| Restic
     Restic -->|"Client-Side AES-256"| B2
 ```
