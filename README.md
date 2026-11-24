@@ -20,6 +20,79 @@ This repository implements an infrastructure-as-code (IaC) methodology to enforc
 
 ---
 
+### 🌐 Zero-Trust Network & Traffic Flow
+
+```mermaid
+flowchart TB
+    classDef external fill:#1e293b,stroke:#94a3b8,color:#f8fafc,stroke-width:2px
+    classDef perimeter fill:#0f172a,stroke:#38bdf8,color:#f8fafc,stroke-width:2px
+    classDef security fill:#1e1b4b,stroke:#818cf8,color:#f8fafc,stroke-width:2px
+    classDef core fill:#064e3b,stroke:#34d399,color:#f8fafc,stroke-width:2px
+    classDef obs fill:#451a03,stroke:#fbbf24,color:#f8fafc,stroke-width:2px
+    classDef storage fill:#27272a,stroke:#a1a1aa,color:#f8fafc,stroke-width:2px
+
+    Client["📱 Remote / LAN Client<br/>(iOS / Desktop)"]:::external
+    WAN(("🌐 Public Internet<br/>(Ports 80/443 Closed)")):::external
+
+    subgraph TNAS ["🖥️ TerraMaster F4-424 Pro (TOS) — Docker Host"]
+        direction TB
+
+        subgraph Ingress ["Perimeter & Identity Plane"]
+            WG["🔒 WireGuard (wg-easy)<br/>UDP :51820 | UI :51821"]:::perimeter
+            DNS["🛡️ Blocky DNS<br/>UDP/TCP :53 | Metrics :4000"]:::security
+            NPM["🔀 Nginx Proxy Manager<br/>HTTP :8080 | HTTPS :8443 | UI :81"]:::perimeter
+            Auth["🪪 Authelia IdP<br/>SSO / WebAuthn / TOTP (:9091)"]:::security
+        end
+
+        subgraph Workloads ["Application & Media Workloads"]
+            Navi["🎵 Navidrome Media Core<br/>TCP :4533 (:ro Media)"]:::core
+        end
+
+        subgraph Observability ["Observability & SRE Plane"]
+            Prom["📈 Prometheus<br/>(Multi-Window SLO Rules)"]:::obs
+            Graf["📊 Grafana<br/>(Dashboards & Mobile Alerts)"]:::obs
+        end
+
+        subgraph ControlPlane ["GitOps & Backup Plane"]
+            Doco["🔄 Doco-CD<br/>(Pull-Based GitOps Agent)"]:::core
+            Restic["💾 Restic Backup<br/>(Daily Encrypted Snapshots)"]:::storage
+            Vol[("🗄️ /Volume1/DockerAppsData<br/>(Stateful Configs)")]:::storage
+        end
+    end
+
+    B2[("☁️ Off-Site Object Storage<br/>(Encrypted 3-2-1 Backup)")]:::storage
+
+    Client -->|"1. Encrypted Tunnel (51820/udp)"| WAN
+    WAN -->|"2. Authenticated Handshake"| WG
+    WG -->|"3. DNS Queries (:53)"| DNS
+    WG -->|"4. HTTPS (*.domain :8443)"| NPM
+    NPM <-->|"5. ForwardAuth / OIDC (:9091)"| Auth
+    NPM -->|"6. Authorized Traffic"| Navi
+    NPM -->|"6. Authorized Traffic"| Graf
+
+    DNS -.->|"Scrape :4000/metrics"| Prom
+    Prom -->|"Evaluate SLO Burn Rate"| Graf
+    Vol --- Navi
+    Vol --- Auth
+    Vol --- DNS
+    Vol -->|":ro Mount"| Restic
+    Restic -->|"Client-Side AES-256"| B2
+```
+---
+### 📐 Architecture Decision Records (ADRs)
+
+Key engineering trade-offs, empirical benchmarks, and evolutionary roadmaps are documented in [`docs/adr/`](docs/adr/README.md):
+
+| ID | Decision | Architectural Rationale |
+| :--- | :--- | :--- |
+| **[ADR-001](docs/adr/001-docker-compose-and-doco-cd-over-kubernetes.md)** | Preserve TOS + Docker Compose + Doco-CD | Protects native TerraMaster RAID/storage stability while maintaining GitOps parity ahead of a planned **Talos Linux Kubernetes** migration. |
+| **[ADR-002](docs/adr/002-sops-and-age-over-hashicorp-vault.md)** | Mozilla SOPS + `age` Secret Encryption | Enables zero-dependency encrypted secrets in Git with trivial bare-metal recovery and no circular bootstrap dependencies. |
+| **[ADR-003](docs/adr/003-wireguard-only-zero-trust-perimeter.md)** | WireGuard-Only Zero-Trust Perimeter | Eliminates public HTTP surface and resolves iOS battery drain empirically observed with Tailscale's userspace daemon. |
+| **[ADR-004](docs/adr/004-traefik-over-nginx-proxy-manager.md)** | Planned Migration: NPM $\rightarrow$ Traefik v3 | Roadmap to replace stateful UI "ClickOps" with declarative label routing, read-only `docker-socket-proxy`, and native HTTP metrics. |
+| **[ADR-005](docs/adr/005-authelia-over-pocket-id.md)** | Authelia over Pocket ID | Provides reverse-proxy `ForwardAuth` for non-OIDC apps and declarative YAML policy-as-code alongside Passkey/TOTP 2FA. |
+
+---
+
 ## 🚀 CI/CD Infrastructure & Automation Engineering
 
 This monorepo utilizes an advanced, decoupled multi-stage execution pipeline built under strict zero-trust parameters to guarantee supply chain integrity before host cluster synchronization.
