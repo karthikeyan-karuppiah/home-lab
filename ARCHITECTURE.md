@@ -48,6 +48,54 @@ To enforce container statelessness and guarantee zero configuration drift, stora
 ---
 
 ## 🗺️ Low-Level Packet Journey Mapping
+```mermaid
+sequenceDiagram
+    autonumber
+    actor iPhone as 📱 iPhone Client<br/>(10.8.0.2 over 5G)
+    participant Router as 🌐 Edge Router<br/>(WAN :51820/udp)
+    participant WG as 🔒 wg-easy<br/>(Host :51820/udp)
+    participant Blocky as 🛡️ Blocky DNS<br/>(Host :53/udp)
+    participant NPM as 🔀 Nginx Proxy Manager<br/>(Host :8080 / proxy net)
+    participant Auth as 🪪 Authelia<br/>(proxy + internal net)
+    participant Redis as 🗄️ Authelia Redis<br/>(authelia-internal :6379)
+    participant Navi as 🎵 Navidrome<br/>(proxy net :4533)
+
+    rect rgb(30, 41, 59)
+        Note over iPhone,WG: Stage 1 & 2: Split-Tunnel Routing & WireGuard Decryption
+        iPhone->>iPhone: Route check: 192.168.1.0/24 matches AllowedIPs
+        iPhone->>Router: Encrypted UDP packet (Noise protocol)
+        Router->>WG: Forward UDP :51820 → 192.168.1.100:51820
+        WG-->>iPhone: Handshake verified & WG_DEFAULT_DNS injected
+    end
+
+    rect rgb(30, 27, 75)
+        Note over iPhone,Blocky: Stage 3: Domain Resolution Hijacking (Layer 3/4)
+        iPhone->>Blocky: DNS A-Record Query: "music.home" (:53/udp)
+        Blocky-->>iPhone: Returns NAS IP: 192.168.1.100 (No port awareness)
+    end
+
+    rect rgb(6, 78, 59)
+        Note over iPhone,NPM: Stage 4: Layer 7 Host Header Routing (Host → Docker Bridge)
+        iPhone->>NPM: HTTP GET http://192.168.1.100:8080 (Host: music.home)
+        NPM->>NPM: Match L7 Host header rule for music.home
+    end
+
+    rect rgb(59, 7, 100)
+        Note over NPM,Redis: Stage 5: ForwardAuth Verification & Micro-Segmented Session Lookup
+        NPM->>Auth: Sub-request: GET http://authelia:9091/api/authz/auth-request
+        Auth->>Redis: Lookup session cookie over authelia-internal (:6379)
+        Redis-->>Auth: Session valid + 2FA verified
+        Auth-->>NPM: 200 OK (Headers: Remote-User, Remote-Groups)
+    end
+
+    rect rgb(69, 26, 3)
+        Note over NPM,Navi: Stage 6: Internal Proxy Pass & Read-Only Media Delivery
+        NPM->>Navi: Proxy request over "proxy" bridge → http://navidrome:4533
+        Navi->>Navi: Read audio stream from :ro /songs volume
+        Navi-->>NPM: Audio stream response
+        NPM-->>iPhone: Encrypted response back through WireGuard tunnel
+    end
+```
 
 ```text
 [ iOS Client (Mobile Data) ]
