@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.3.4](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.3...v1.3.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **doco-cd:** increase auto-discovery depth to 6 ([c0365bf](https://github.com/karthikeyan-karuppiah/home-lab/commit/c0365bf12ecde1560b4638fdc571e67255f62952))
+* **lint:** add missing trailing newline in docker-compose.yml ([272ea0a](https://github.com/karthikeyan-karuppiah/home-lab/commit/272ea0a5979b2526d03e475003258e47e98ec74e))
+* **navidrome:** fix volume permissions and compose v2 resource schema ([52e3018](https://github.com/karthikeyan-karuppiah/home-lab/commit/52e30188286548422506ebfd2fc58b25e52475e3))
+* **navidrome:** remove broken sha256 image digest pin ([828c50d](https://github.com/karthikeyan-karuppiah/home-lab/commit/828c50d3fb25b7efa2d96a333d3049769887e491))
+* **user:** bring back the user who owns 1000 ([9512ad4](https://github.com/karthikeyan-karuppiah/home-lab/commit/9512ad47dfccb1b0cd82acc8932ef7ff213b65af))
+* **user:** bring back the user who owns 1000 ([4a1afed](https://github.com/karthikeyan-karuppiah/home-lab/commit/4a1afed547ffb42b05365cb901afeb85c4817307))
+* **user:** bring back the user who owns the Volumewq ([9c1f501](https://github.com/karthikeyan-karuppiah/home-lab/commit/9c1f5011fab3243857ee18b6d07e474432b3b8be))
+
+
+### Documentation
+
+* **architecture:** add six-stage mermaid sequence diagram for packet journey ([9c33308](https://github.com/karthikeyan-karuppiah/home-lab/commit/9c3330889e8348bf8de4a205c24d70e0421fd38e))
+
+
+### Miscellaneous Chores
+
+* **deps:** update ghcr.io/kimdre/doco-cd docker tag to v0.134.0 ([5c7cf51](https://github.com/karthikeyan-karuppiah/home-lab/commit/5c7cf511116db907c41a10d73892c77041ac1176))
+* **deps:** update renovate/renovate docker tag to v44.239.1 ([1f9a641](https://github.com/karthikeyan-karuppiah/home-lab/commit/1f9a641d6c2443ae306b5aa005af1967a02e4fb4))
+
+
+### Code Refactoring
+
+* **navidrome:** harden application runtime context and isolate ingress port ([a04c778](https://github.com/karthikeyan-karuppiah/home-lab/commit/a04c7784593a9cefc717811ed0d2d97d2add2bc6)), closes [#14](https://github.com/karthikeyan-karuppiah/home-lab/issues/14)
+
 ## [1.3.3](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.2...v1.3.3) (2026-11-23)
 
 
