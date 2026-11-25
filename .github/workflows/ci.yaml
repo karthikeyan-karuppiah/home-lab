@@ -1,12 +1,13 @@
 name: Continuous Integration
 
+# =============================================================================
 # Event Triggers (Webhook Configuration)
-# -----------------------------------------------------------------------------
+# =============================================================================
 on:
   push:
     branches: [main]
     # Prevent wasted runner billable minutes.
-    # Documentation or configuration-only changes should not spin up infrastructure.
+    # Documentation or metadata-only changes should not spin up infrastructure.
     paths-ignore:
       - '**.md'
       - '.gitignore'
@@ -18,9 +19,9 @@ on:
       - '.gitignore'
       - 'LICENSE'
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Concurrency Management (Anti-Race Condition Logic)
-# -----------------------------------------------------------------------------
+# =============================================================================
 concurrency:
   # Isolates execution contexts cleanly.
   # If a developer pushes a new commit to an active PR, the old running job
@@ -29,9 +30,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Zero-Trust Global Permissions Matrix
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Principal of Least Privilege.
 # Explicitly revokes all default token permissions globally.
 # Each standalone job must request its own granular scopes down below.
@@ -39,7 +40,7 @@ permissions: {}
 
 jobs:
   # ===========================================================================
-  # Job: Supply-Chain Gate — GitHub Actions Lockfile Verification
+  # Gate 1: Supply-Chain Gate — GitHub Actions Lockfile Verification
   # ===========================================================================
   verify-lockfile:
     name: Verify Actions Lockfile
@@ -55,11 +56,20 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
+      # -----------------------------------------------------------------------
+      # Source Code Lifecycle
+      # -----------------------------------------------------------------------
+      # Uses verified release tags to handle core repository checkouts.
+      # 'persist-credentials: false' keeps the local .git token secure from scripts.
       - name: Checkout repository
         uses: actions/checkout@v4.4.0
         with:
           persist-credentials: false
 
+      # -----------------------------------------------------------------------
+      # Tooling Provisioning
+      # -----------------------------------------------------------------------
+      # Installs pinned gh-actions-lock extension to enforce SHA/version pinning
       - name: Install gh-actions-lock
         run: |
           set -euo pipefail
@@ -68,35 +78,104 @@ jobs:
           fi
           gh extension install github/gh-actions-lock --pin v0.4.1
 
+      # -----------------------------------------------------------------------
+      # Integrity Verification
+      # -----------------------------------------------------------------------
+      # Aborts pipeline immediately if workflow actions drift from actions.lock
       - name: Verify workflow lockfile
         run: gh actions-lock --verify
 
   # ===========================================================================
-  # Job: Static Analysis, Infrastructure, & Security Scans
+  # Parallel Job 1: Compliance Gate — Push Commit Message Validation
   # ===========================================================================
-  lint-and-scan:
-    name: Lint & Security Scans
-    # Ensures lockfile supply-chain verification passes before executing scans
+  validate-commits:
+    name: Validate Commit Message
+    # Ensures lockfile supply-chain verification passes before executing checks
     needs: verify-lockfile
+    # Runs only on direct branch pushes (PR titles are validated by pr-lint.yml).
+    # Placing the condition at the job level avoids booting an unnecessary runner on PRs.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    # Hard constraint to break out of hanging or frozen test tasks
-    timeout-minutes: 15
+    # Hard constraint to break out of hanging or frozen tasks
+    timeout-minutes: 5
 
-    # Scoped permissions specifically for security evaluations and scanning
+    # Read-only repository access to inspect commit history
     permissions:
-      # Required to pull and read codebase context
       contents: read
-      # Required to contextualize PR workflows
-      pull-requests: read
-      # Enables uploading vulnerabilities directly to GitHub Security dashboard
-      security-events: write
 
     steps:
       # -----------------------------------------------------------------------
       # Source Code Lifecycle
       # -----------------------------------------------------------------------
-      # Uses verified release tags to handle core repository checkouts.
-      # 'persist-credentials: false' keeps the local .git token secure from local scripts.
+      - name: Checkout repository
+        uses: actions/checkout@v4.4.0
+        with:
+          # Fetches full commit history to inspect all pushed commits in the range
+          fetch-depth: 0
+          persist-credentials: false
+
+      # -----------------------------------------------------------------------
+      # Commit Convention Enforcement
+      # -----------------------------------------------------------------------
+      # Validates commit messages against Conventional Commits standards
+      - name: Validate Push Commit Message
+        uses: karthikeyan-karuppiah/devsecops-actions/validate-push-commit@v1.2.1
+
+  # ===========================================================================
+  # Parallel Job 2: Static Analysis & Container Configuration Linting
+  # ===========================================================================
+  lint-containers:
+    name: Lint YAML, Compose, & Dockerfiles
+    # Ensures lockfile supply-chain verification passes before executing scans
+    needs: verify-lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Read-only repository access to evaluate configuration and container files
+    permissions:
+      contents: read
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Source Code Lifecycle
+      # -----------------------------------------------------------------------
+      # Shallow checkout (default fetch-depth: 1) suffices for static file linting
+      - name: Checkout repository
+        uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
+
+      # -----------------------------------------------------------------------
+      # Configuration & Container Best-Practice Checks
+      # -----------------------------------------------------------------------
+      # Runs yamllint, docker compose config, compose-lint, and Hadolint
+      - name: Lint YAML, Compose, & Dockerfiles
+        uses: karthikeyan-karuppiah/devsecops-actions/lint-containers@v1.2.1
+        with:
+          yamllint-config-file: '.yamllint.yml'
+          enforce-compose-lint: 'false'
+
+  # ===========================================================================
+  # Parallel Job 3: Threat Management — Secret Scanning (Gitleaks)
+  # ===========================================================================
+  secret-scan:
+    name: Secret Scan (Gitleaks)
+    # Ensures lockfile supply-chain verification passes before executing scans
+    needs: verify-lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Scoped permissions specifically for commit & PR diff secret scanning
+    permissions:
+      # Required to pull and inspect full git commit history
+      contents: read
+      # Required to contextualize and scan PR commit ranges
+      pull-requests: read
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Source Code Lifecycle
+      # -----------------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4.4.0
         with:
@@ -105,37 +184,79 @@ jobs:
           persist-credentials: false
 
       # -----------------------------------------------------------------------
-      # Compliance Gate: Push Commit Message Validation
+      # Credential & Token Leak Detection
       # -----------------------------------------------------------------------
-      # Runs only on direct branch pushes (PR titles are validated by pr-lint.yml).
-      - name: Validate Push Commit Message
-        if: github.event_name == 'push'
-        uses: karthikeyan-karuppiah/devsecops-actions/validate-push-commit@v1.2.1
-
-      # -----------------------------------------------------------------------
-      # Static Analysis & Container Configuration Linting
-      # -----------------------------------------------------------------------
-      # Runs yamllint, docker compose config, compose-lint, and Hadolint.
-      - name: Lint YAML, Compose, & Dockerfiles
-        uses: karthikeyan-karuppiah/devsecops-actions/lint-containers@v1.2.1
-        with:
-          yamllint-config-file: '.yamllint.yml'
-          enforce-compose-lint: 'false'
-
-      # -----------------------------------------------------------------------
-      # Threat Management: Secret Scanning (Gitleaks)
-      # -----------------------------------------------------------------------
-      # Evaluates all raw commits to confirm credentials or access keys weren't accidentally added.
+      # Evaluates all raw commits to confirm credentials or access keys weren't added
       - name: Scan for leaked secrets (Gitleaks)
         uses: gitleaks/gitleaks-action@v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ===========================================================================
+  # Parallel Job 4: Vulnerability Assessment — Trivy Secrets, Image CVEs & SBOMs
+  # ===========================================================================
+  trivy-scan:
+    name: Trivy Security Scan
+    # Ensures lockfile supply-chain verification passes before executing scans
+    needs: verify-lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Scoped permissions specifically for vulnerability scanning & SARIF uploads
+    permissions:
+      # Required to pull and read codebase & container context
+      contents: read
+      # Enables uploading SARIF vulnerability reports to GitHub Security dashboard
+      security-events: write
+
+    steps:
       # -----------------------------------------------------------------------
-      # Vulnerability Assessment: Trivy Secrets, Image CVEs & SBOMs
+      # Source Code Lifecycle
       # -----------------------------------------------------------------------
+      # Shallow checkout suffices for filesystem, config, and container image scans
+      - name: Checkout repository
+        uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
+
+      # -----------------------------------------------------------------------
+      # Filesystem, Misconfiguration, & Container Vulnerability Scan
+      # -----------------------------------------------------------------------
+      # Scans repository files, IaC/Compose configs, and referenced container images
       - name: Run Trivy Secret & Container Scans
         uses: karthikeyan-karuppiah/devsecops-actions/trivy-security@v1.2.1
         with:
           trivy-version: 'v0.76.1'
           enforce-image-cves: 'false'
+
+  # ===========================================================================
+  # Gate 2: Final Aggregator — Single Status Check for Branch Protection
+  # ===========================================================================
+  ci-status:
+    name: CI Gatekeeper
+    # Waits for the lockfile check and all 4 parallel jobs to finish
+    needs:
+      - verify-lockfile
+      - validate-commits
+      - lint-containers
+      - secret-scan
+      - trivy-scan
+    # Ensures this job evaluates results even if an upstream job fails or is skipped
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Final Pipeline Verdict
+      # -----------------------------------------------------------------------
+      # Treats intentionally 'skipped' jobs (e.g., validate-commits on PRs) as
+      # passing, while failing immediately if any job errored or was cancelled.
+      - name: Evaluate parallel job results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] || \
+             [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required CI jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All applicable CI checks passed!"
