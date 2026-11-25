@@ -22,3 +22,8 @@ rules:
   CL-0020:
     exclude_services:
       renovate: "Token is loaded at runtime from /run/secrets/renovate-token, not embedded as a literal"
+
+  CL-0005:
+    - nginx-proxy-manager
+    - blocky
+    - wg-easy
