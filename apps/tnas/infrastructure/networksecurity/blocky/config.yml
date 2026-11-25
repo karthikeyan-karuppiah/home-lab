@@ -1,19 +1,16 @@
-upstreams:
+﻿upstreams:
   groups:
     default:
-      - https://dns.quad9.net/dns-query
-      # FIXED: Added the proper /dns-query secure path endpoint to Cloudflare
+      - https://quad9.net
       - https://cloudflare-dns.com
 
 blocking:
   denylists:
     ads:
-      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
-    # FIXED: Replaced human-readable site with direct raw malware and phishing lists
+      - https://githubusercontent.com
     malware:
       - https://firebog.net
       - https://firebog.net
-    # FIXED: Replaced human-readable site with direct raw privacy and tracking list
     tracking:
       - https://firebog.net
   clientGroupsBlock:
@@ -22,12 +19,9 @@ blocking:
       - malware
       - tracking
 
-  # What to return when a site is blocked (0.0.0.0 is fastest for browsers)
   blockType: zeroIp
-  # Re-download list updates automatically every 4 hours in the background
   refreshPeriod: 4h
 
-# Optimized cache storage to stop querying the internet for the same domains
 caching:
   minTime: 5m
   maxTime: 30m
@@ -46,9 +40,6 @@ customDNS:
     music.home.lab: 192.168.1.110
     auth.home.lab: 192.168.1.110
 
-# Add this block to allow Prometheus to pull metrics
 prometheus:
-  # Enables the built-in Prometheus exporter inside Blocky
   enable: true
-  # Sets the URL endpoint where Prometheus will fetch metrics (http://<NAS-IP>:4000/metrics)
   path: /metrics
