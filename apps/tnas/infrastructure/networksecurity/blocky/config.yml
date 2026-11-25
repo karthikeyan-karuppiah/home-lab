@@ -20,7 +20,8 @@ blocking:
       - tracking
 
   blockType: zeroIp
-  refreshPeriod: 4h
+  loading:
+    refreshPeriod: 4h
 
 caching:
   minTime: 5m
