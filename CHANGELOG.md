@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.4.0](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.4...v1.4.0) (2026-11-25)
+
+
+### Features
+
+* **blocky:** add explicit bootstrapDns upstream resolvers ([e513d7d](https://github.com/karthikeyan-karuppiah/home-lab/commit/e513d7d50d63688990fd6550b0822877604e79f9))
+
+
+### Bug Fixes
+
+* **blocky:** restore full denylist and DoH upstream URLs ([2cb41c7](https://github.com/karthikeyan-karuppiah/home-lab/commit/2cb41c7a170fbe27c569d1833eec82eb6ff0d290))
+* **blocky:** restore valid denylist URLs and Cloudflare DoH endpoint ([32109d5](https://github.com/karthikeyan-karuppiah/home-lab/commit/32109d58ccfc90338b4f14b4ba063e4d5288b501))
+* **blocky:** use direct raw blocklist URLs and Cloudflare DoH endpoint ([14ef7fc](https://github.com/karthikeyan-karuppiah/home-lab/commit/14ef7fcff90cb13e2edabcd8598626f01fb10206))
+
+
+### Code Refactoring
+
+* **blocky:** harden DNS firewall runtime and enforce image digests ([c8730e9](https://github.com/karthikeyan-karuppiah/home-lab/commit/c8730e96b91d5bd0d5e3f5d02616c6f3f085cb86)), closes [#14](https://github.com/karthikeyan-karuppiah/home-lab/issues/14)
+
 ## [1.3.4](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.3...v1.3.4) (2026-11-25)
 
 
