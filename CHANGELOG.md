@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.2...v1.3.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* **navidrome:** replace placeholder username in docker volume paths ([23d0d44](https://github.com/karthikeyan-karuppiah/home-lab/commit/23d0d44c52e6568d73f96e9699d5388f1feaced2))
+
 ## [1.3.2](https://github.com/karthikeyan-karuppiah/home-lab/compare/v1.3.1...v1.3.2) (2026-11-23)
 
 
