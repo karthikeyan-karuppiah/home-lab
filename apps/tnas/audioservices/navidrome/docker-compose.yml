@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
 
     # CL-0018: Drop host-root privileges by running under an unprivileged user space matching /Volume1/DockerAppsData/navidrome/data
-    #user: "1000:1000"
+    user: "1000:1000"
 
     # CL-0007: Deny container root filesystem mutations to block malware persistence vectors
     read_only: true
