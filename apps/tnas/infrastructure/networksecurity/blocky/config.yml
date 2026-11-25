@@ -1,3 +1,7 @@
+bootstrapDns:
+  - upstream: tcp+udp:9.9.9.9
+  - upstream: tcp+udp:1.1.1.1
+
 upstreams:
   groups:
     default:
