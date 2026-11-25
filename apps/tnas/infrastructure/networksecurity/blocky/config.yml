@@ -1,18 +1,18 @@
-﻿upstreams:
+upstreams:
   groups:
     default:
-      - https://quad9.net
-      - https://cloudflare-dns.com
+      - https://dns.quad9.net/dns-query
+      - https://cloudflare-dns.com/dns-query
 
 blocking:
   denylists:
     ads:
-      - https://githubusercontent.com
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
     malware:
-      - https://firebog.net
-      - https://firebog.net
+      - https://v.firebog.net/hosts/Prigent-Malware.txt
+      - https://v.firebog.net/hosts/RPiList-Phishing.txt
     tracking:
-      - https://firebog.net
+      - https://v.firebog.net/hosts/Easyprivacy.txt
   clientGroupsBlock:
     default:
       - ads
@@ -25,7 +25,6 @@ blocking:
 caching:
   minTime: 5m
   maxTime: 30m
-  # Prefetches frequently used domains before they expire in cache
   prefetching: true
   prefetchExpires: 2h
   prefetchThreshold: 5
