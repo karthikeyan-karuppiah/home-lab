@@ -40,9 +40,11 @@ ports:
 
 customDNS:
   mapping:
+    auth.home.lab: 192.168.1.110
     music.home: 192.168.1.110
     music.home.lab: 192.168.1.110
-    auth.home.lab: 192.168.1.110
+    wg.home.lab: 192.168.1.110
+    npm.home.lab: 192.168.1.110
 
 prometheus:
   enable: true

@@ -19,7 +19,7 @@ services:
     ports:
       # CL-0005: Bind port to localhost only; routes traffic securely via Nginx Proxy Manager [5a]
       #- "127.0.0.1:4533:4533"
-      - "4533:4533"
+      #- "4533:4533"
 
     environment:
       # Standard Navidrome application environment parameters
