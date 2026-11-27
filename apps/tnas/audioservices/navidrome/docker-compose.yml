@@ -3,7 +3,7 @@ services:
     container_name: navidrome
     # CL-0019: Pinned to exact stable version 0.64.2 along with its immutable container digest checksum
     #image: deluan/navidrome:0.64.2@sha256:4d70b79e8e2e28a55edab51b72a8c88af49487d0e4f002862a8c8d4cf64e5fa4
-    image: deluan/navidrome:0.64.2
+    image: deluan/navidrome:0.64.2@sha256:38dc2727bfcfd5ede290f8ada114fc90368146f265ae4701ddddbcbe2a44ee52
     restart: unless-stopped
 
     # CL-0018: Drop host-root privileges by running under an unprivileged user space matching /Volume1/DockerAppsData/navidrome/data
